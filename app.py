@@ -1,7 +1,8 @@
 # ==========================================================
 # app.py
-# SIMPLE PRO VERSION
-# Login + Train Models + Easy Prediction + Pie Chart HD
+# FINAL PRO VERSION - FULL CODE
+# Centered Login/Register + Multi Model Training
+# Quick Prediction + ULTRA HD Charts
 # ==========================================================
 
 import matplotlib
@@ -61,7 +62,7 @@ conn.commit()
 conn.close()
 
 # ==========================================================
-# STYLE
+# CSS
 # ==========================================================
 
 style = """
@@ -69,7 +70,7 @@ style = """
 *{box-sizing:border-box}
 body{
 margin:0;
-font-family:Arial;
+font-family:Arial,sans-serif;
 background:#eef2f7;
 }
 .layout{
@@ -82,22 +83,14 @@ background:#0f172a;
 color:white;
 padding:25px;
 }
-.sidebar h2{
-margin-top:0;
-}
 .sidebar a{
 display:block;
-color:#cbd5e1;
 padding:12px 0;
+color:#cbd5e1;
 text-decoration:none;
 }
-.sidebar a:hover{
-color:white;
-}
-.main{
-flex:1;
-padding:30px;
-}
+.sidebar a:hover{color:white;}
+.main{flex:1;padding:30px;}
 .card{
 background:white;
 padding:22px;
@@ -125,17 +118,16 @@ border:1px solid #d1d5db;
 border-radius:10px;
 }
 button{
+width:100%;
+padding:12px;
 background:#2563eb;
 color:white;
 border:none;
-padding:12px 18px;
 border-radius:10px;
-cursor:pointer;
 font-weight:bold;
+cursor:pointer;
 }
-button:hover{
-background:#1d4ed8;
-}
+button:hover{background:#1d4ed8;}
 table{
 width:100%;
 border-collapse:collapse;
@@ -145,25 +137,36 @@ padding:12px;
 border-bottom:1px solid #e5e7eb;
 text-align:left;
 }
-th{
-background:#f8fafc;
-}
+th{background:#f8fafc;}
 .result{
 padding:14px;
 border-radius:12px;
-font-weight:bold;
 background:#eff6ff;
 color:#1d4ed8;
+font-weight:bold;
 }
 img{
 width:100%;
 border-radius:12px;
 margin-top:10px;
 }
-pre{
-white-space:pre-wrap;
-font-size:13px;
+.center{
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+padding:20px;
 }
+.auth{
+width:420px;
+background:white;
+padding:30px;
+border-radius:18px;
+box-shadow:0 10px 25px rgba(0,0,0,.08);
+}
+.auth h1,.auth h2{text-align:center;}
+.auth p{text-align:center;}
+pre{white-space:pre-wrap;font-size:13px;}
 </style>
 """
 
@@ -179,11 +182,12 @@ def home():
 
     return render_template_string(f"""
     <html><head>{style}</head><body>
-    <div class='main'>
-      <div class='card'>
+    <div class='center'>
+      <div class='auth'>
         <h1>Fake Giveaway Detector</h1>
-        <a href='/login'>Login</a> |
-        <a href='/register'>Register</a>
+        <p>Professional ML Fraud Detection</p>
+        <a href='/login'><button>Login</button></a><br><br>
+        <a href='/register'><button>Create Account</button></a>
       </div>
     </div>
     </body></html>
@@ -199,19 +203,16 @@ def register():
     msg = ""
 
     if request.method == "POST":
-
         try:
             u = request.form["username"]
             p = generate_password_hash(request.form["password"])
 
             conn = sqlite3.connect("users.db")
             cur = conn.cursor()
-
             cur.execute(
                 "INSERT INTO users(username,password) VALUES (?,?)",
                 (u,p)
             )
-
             conn.commit()
             conn.close()
 
@@ -222,18 +223,17 @@ def register():
 
     return render_template_string(f"""
     <html><head>{style}</head><body>
-    <div class='main'>
-    <div class='card'>
-    <h2>Register</h2>
-
-    <form method='POST'>
-    <input name='username' required placeholder='Username'>
-    <input type='password' name='password' required placeholder='Password'>
-    <button>Create Account</button>
-    </form>
-
-    {msg}
-    </div>
+    <div class='center'>
+      <div class='auth'>
+        <h2>Create Account</h2>
+        <form method='POST'>
+          <input name='username' placeholder='Username' required>
+          <input type='password' name='password' placeholder='Password' required>
+          <button>Create Account</button>
+        </form>
+        <p style='color:red'>{msg}</p>
+        <p><a href='/login'>Login</a></p>
+      </div>
     </div>
     </body></html>
     """)
@@ -271,18 +271,16 @@ def login():
 
     return render_template_string(f"""
     <html><head>{style}</head><body>
-    <div class='main'>
-    <div class='card'>
-    <h2>Login</h2>
-
-    <form method='POST'>
-    <input name='username' required placeholder='Username'>
-    <input type='password' name='password' required placeholder='Password'>
-    <button>Login</button>
-    </form>
-
-    {msg}
-    </div>
+    <div class='center'>
+      <div class='auth'>
+        <h2>Login</h2>
+        <form method='POST'>
+          <input name='username' placeholder='Username' required>
+          <input type='password' name='password' placeholder='Password' required>
+          <button>Login</button>
+        </form>
+        <p style='color:red'>{msg}</p>
+      </div>
     </div>
     </body></html>
     """)
@@ -309,136 +307,165 @@ def dashboard():
     user = session["user"]
     pred = ""
 
-    # ------------------------------------------------------
     # TRAIN
-    # ------------------------------------------------------
-
     if request.method == "POST" and "train" in request.form:
 
-        df = pd.read_csv(request.files["file"])
+        try:
+            df = pd.read_csv(request.files["file"])
 
-        X = df.drop("label", axis=1)
-        y = df["label"]
+            X = df.drop("label", axis=1)
+            y = df["label"]
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y,
-            test_size=0.2,
-            random_state=42,
-            stratify=y
-        )
-
-        prep = ColumnTransformer([
-
-            ("text",
-             TfidfVectorizer(
-                 stop_words="english",
-                 ngram_range=(1,2)
-             ),
-             "text"),
-
-            ("cat",
-             OneHotEncoder(handle_unknown="ignore"),
-             ["platform","link"]),
-
-            ("num",
-             StandardScaler(),
-             [
-                 "account_age_days",
-                 "likes",
-                 "followers",
-                 "verified_account"
-             ])
-        ])
-
-        algos = {
-            "SVM": LinearSVC(class_weight="balanced"),
-            "Logistic": LogisticRegression(max_iter=4000),
-            "Forest": RandomForestClassifier(n_estimators=300),
-            "Tree": DecisionTreeClassifier(max_depth=8)
-        }
-
-        models = {}
-        scores = {}
-
-        best_acc = 0
-
-        for name, clf in algos.items():
-
-            pipe = Pipeline([
-                ("prep", prep),
-                ("clf", clf)
-            ])
-
-            pipe.fit(X_train, y_train)
-
-            yp = pipe.predict(X_test)
-
-            acc = round(
-                accuracy_score(y_test, yp) * 100,
-                2
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y,
+                test_size=0.2,
+                random_state=42,
+                stratify=y
             )
 
-            models[name] = pipe
-            scores[name] = acc
+            prep = ColumnTransformer([
+                ("text",
+                 TfidfVectorizer(stop_words="english", ngram_range=(1,2)),
+                 "text"),
 
-            if acc > best_acc:
-                best_acc = acc
-                best_pred = yp
+                ("cat",
+                 OneHotEncoder(handle_unknown="ignore"),
+                 ["platform","link"]),
 
-        models_store[user] = models
-        scores_store[user] = scores
-        reports_store[user] = classification_report(
-            y_test,
-            best_pred
-        )
+                ("num",
+                 StandardScaler(),
+                 ["account_age_days","likes","followers","verified_account"])
+            ])
 
-        # Confusion Matrix HD
-        cm = confusion_matrix(y_test, best_pred)
+            algos = {
+                "SVM": LinearSVC(class_weight="balanced"),
+                "Logistic": LogisticRegression(max_iter=4000),
+                "Forest": RandomForestClassifier(n_estimators=300),
+                "Tree": DecisionTreeClassifier(max_depth=8)
+            }
 
-        plt.figure(figsize=(7,5), dpi=250)
-        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-        plt.tight_layout()
-        plt.savefig(f"static/{user}_cm.png", dpi=300)
-        plt.close()
+            models = {}
+            scores = {}
+            best_acc = 0
 
-        # Pie Chart HD
-        counts = df["label"].value_counts()
+            for name, clf in algos.items():
 
-        values = [counts.get(0,0), counts.get(1,0)]
-        labels = ["Genuine", "Fake"]
+                pipe = Pipeline([
+                    ("prep", prep),
+                    ("clf", clf)
+                ])
 
-        plt.figure(figsize=(8,8), dpi=300)
+                pipe.fit(X_train, y_train)
+                yp = pipe.predict(X_test)
 
-        plt.pie(
-            values,
-            labels=labels,
-            autopct='%1.1f%%',
-            startangle=90,
-            wedgeprops=dict(edgecolor="white", linewidth=2)
-        )
+                acc = round(accuracy_score(y_test, yp)*100,2)
 
-        centre = plt.Circle((0,0),0.55,fc='white')
-        fig = plt.gcf()
-        fig.gca().add_artist(centre)
+                models[name] = pipe
+                scores[name] = acc
 
-        plt.title("Dataset Ratio", fontsize=18, fontweight="bold")
-        plt.tight_layout()
-        plt.savefig(f"static/{user}_pie.png", dpi=350)
-        plt.close()
+                if acc > best_acc:
+                    best_acc = acc
+                    best_pred = yp
 
-    # ------------------------------------------------------
-    # PREDICT SIMPLE
-    # ------------------------------------------------------
+            models_store[user] = models
+            scores_store[user] = scores
+            reports_store[user] = classification_report(y_test, best_pred)
 
+            # ==================================================
+            # ULTRA HD CONFUSION MATRIX
+            # ==================================================
+
+            cm = confusion_matrix(y_test, best_pred)
+
+            plt.figure(figsize=(10,8), dpi=500)
+
+            sns.heatmap(
+                cm,
+                annot=True,
+                fmt="d",
+                cmap="Blues",
+                cbar=False,
+                linewidths=2,
+                linecolor="white",
+                annot_kws={"size":18,"weight":"bold"}
+            )
+
+            plt.title("Confusion Matrix", fontsize=24, fontweight="bold")
+            plt.xlabel("Predicted", fontsize=18)
+            plt.ylabel("Actual", fontsize=18)
+
+            plt.tight_layout()
+
+            plt.savefig(
+                f"static/{user}_cm.png",
+                dpi=700,
+                bbox_inches="tight"
+            )
+
+            plt.close()
+
+            # ==================================================
+            # ULTRA HD PIE CHART
+            # ==================================================
+
+            counts = df["label"].value_counts()
+
+            values = [counts.get(0,0), counts.get(1,0)]
+            labels = ["Genuine", "Fake"]
+
+            plt.figure(figsize=(10,10), dpi=600)
+
+            explode = (0.03, 0.08)
+
+            plt.pie(
+                values,
+                labels=labels,
+                autopct=lambda p:
+                f"{p:.1f}%\n({int(round(p*sum(values)/100))})",
+                startangle=90,
+                pctdistance=0.72,
+                explode=explode,
+                wedgeprops=dict(
+                    edgecolor="white",
+                    linewidth=4
+                ),
+                textprops=dict(
+                    fontsize=18,
+                    fontweight="bold"
+                )
+            )
+
+            centre = plt.Circle((0,0),0.56,fc="white")
+            fig = plt.gcf()
+            fig.gca().add_artist(centre)
+
+            plt.title(
+                "Dataset Genuine vs Fake Ratio",
+                fontsize=24,
+                fontweight="bold"
+            )
+
+            plt.tight_layout()
+
+            plt.savefig(
+                f"static/{user}_pie.png",
+                dpi=800,
+                bbox_inches="tight"
+            )
+
+            plt.close()
+
+        except Exception as e:
+            pred = f"Training Error: {e}"
+
+    # PREDICT
     if request.method == "POST" and "predict" in request.form:
 
-        if user in models_store:
-
+        try:
             model_name = request.form["model"]
             msg = request.form["message"]
             platform = request.form["platform"]
 
-            # Auto Values
             sample = pd.DataFrame([{
                 "text": msg,
                 "platform": platform,
@@ -449,38 +476,30 @@ def dashboard():
                 "verified_account": 1
             }])
 
-            # suspicious words -> fake metadata
-            scam_words = [
-                "otp","urgent","claim",
-                "bank","pan","aadhaar",
-                "winner","click"
-            ]
+            bad = ["otp","claim","urgent","winner","click","bank"]
 
-            if any(word in msg.lower() for word in scam_words):
-
-                sample["link"] = "claim-now.xyz"
+            if any(i in msg.lower() for i in bad):
+                sample["link"] = "fake.xyz"
                 sample["account_age_days"] = 5
-                sample["likes"] = 10
-                sample["followers"] = 50
+                sample["likes"] = 5
+                sample["followers"] = 30
                 sample["verified_account"] = 0
 
             out = models_store[user][model_name].predict(sample)[0]
 
-            pred = (
-                "Fake Giveaway Detected"
-                if out == 1 else
-                "Genuine Giveaway"
-            )
+            pred = "Fake Giveaway Detected" if out == 1 else "Genuine Giveaway"
 
-    scores = scores_store.get(user, {})
-    report = reports_store.get(user, "")
+        except Exception as e:
+            pred = f"Prediction Error: {e}"
+
+    scores = scores_store.get(user,{})
+    report = reports_store.get(user,"")
 
     options = ""
     rows = ""
 
-    if user in models_store:
-        for m in models_store[user]:
-            options += f"<option>{m}</option>"
+    for m in scores:
+        options += f"<option>{m}</option>"
 
     for k,v in scores.items():
         rows += f"<tr><td>{k}</td><td>{v}%</td></tr>"
@@ -490,101 +509,93 @@ def dashboard():
 
     <div class='layout'>
 
-    <div class='sidebar'>
-      <h2>Detector Pro</h2>
-      <a href='/dashboard'>Dashboard</a>
-      <a href='/logout'>Logout</a>
-    </div>
+      <div class='sidebar'>
+        <h2>Detector Pro</h2>
+        <a href='/dashboard'>Dashboard</a>
+        <a href='/logout'>Logout</a>
+      </div>
 
-    <div class='main'>
+      <div class='main'>
 
-      <div class='grid'>
+        <div class='grid'>
 
-        <div class='card'>
-          <div class='metric'>{len(scores)}</div>
-          Models
+          <div class='card'>
+            <div class='metric'>{len(scores)}</div>
+            Models
+          </div>
+
+          <div class='card'>
+            <div class='metric'>{max(scores.values()) if scores else 0}%</div>
+            Best Accuracy
+          </div>
+
+          <div class='card'>
+            <div class='metric'>AI</div>
+            Detection
+          </div>
+
         </div>
 
         <div class='card'>
-          <div class='metric'>{max(scores.values()) if scores else 0}%</div>
-          Accuracy
+          <h2>Upload Dataset</h2>
+          <form method='POST' enctype='multipart/form-data'>
+            <input type='file' name='file' required>
+            <button name='train'>Train Models</button>
+          </form>
         </div>
 
         <div class='card'>
-          <div class='metric'>AI</div>
-          Detection
+          <h2>Quick Live Prediction</h2>
+
+          <form method='POST'>
+
+            <select name='model'>{options}</select>
+
+            <textarea
+            name='message'
+            rows='4'
+            placeholder='Enter giveaway text'></textarea>
+
+            <select name='platform'>
+              <option>Instagram</option>
+              <option>Facebook</option>
+              <option>Twitter</option>
+              <option>YouTube</option>
+            </select>
+
+            <button name='predict'>Check</button>
+
+          </form>
+
+          <div class='result'>{pred}</div>
+
+        </div>
+
+        <div class='card'>
+          <h2>Accuracy Table</h2>
+          <table>
+            <tr><th>Model</th><th>Accuracy</th></tr>
+            {rows}
+          </table>
+        </div>
+
+        <div class='card'>
+          <h2>Classification Report</h2>
+          <pre>{report}</pre>
+        </div>
+
+        <div class='card'>
+          <h2>Confusion Matrix</h2>
+          <img src='/static/{user}_cm.png'>
+        </div>
+
+        <div class='card'>
+          <h2>Dataset Ratio</h2>
+          <img src='/static/{user}_pie.png'>
         </div>
 
       </div>
 
-      <div class='card'>
-        <h2>Upload Dataset</h2>
-
-        <form method='POST' enctype='multipart/form-data'>
-        <input type='file' name='file' required>
-        <button name='train'>Train Models</button>
-        </form>
-      </div>
-
-      <div class='card'>
-        <h2>Quick Live Prediction</h2>
-
-        <form method='POST'>
-
-        <select name='model'>
-        {options}
-        </select>
-
-        <textarea
-        name='message'
-        rows='4'
-        placeholder='Enter giveaway message'></textarea>
-
-        <select name='platform'>
-        <option>Instagram</option>
-        <option>Facebook</option>
-        <option>Twitter</option>
-        <option>YouTube</option>
-        </select>
-
-        <button name='predict'>Check</button>
-
-        </form>
-
-        <div class='result'>{pred}</div>
-
-      </div>
-
-      <div class='card'>
-        <h2>Accuracy Table</h2>
-
-        <table>
-        <tr>
-        <th>Model</th>
-        <th>Accuracy</th>
-        </tr>
-
-        {rows}
-
-        </table>
-      </div>
-
-      <div class='card'>
-        <h2>Classification Report</h2>
-        <pre>{report}</pre>
-      </div>
-
-      <div class='card'>
-        <h2>Confusion Matrix</h2>
-        <img src='/static/{user}_cm.png'>
-      </div>
-
-      <div class='card'>
-        <h2>Dataset Genuine vs Fake Ratio</h2>
-        <img src='/static/{user}_pie.png'>
-      </div>
-
-    </div>
     </div>
 
     </body></html>
