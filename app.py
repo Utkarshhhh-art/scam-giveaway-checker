@@ -1,8 +1,7 @@
 # ==========================================================
 # app.py
-# FINAL PRO VERSION - FULL CODE
-# Centered Login/Register + Multi Model Training
-# Quick Prediction + ULTRA HD Charts
+# RENDER FIXED VERSION (512MB SAFE)
+# Login + Multi Model + Charts + Fast Deploy
 # ==========================================================
 
 import matplotlib
@@ -25,7 +24,6 @@ from sklearn.pipeline import Pipeline
 
 from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
@@ -62,23 +60,16 @@ conn.commit()
 conn.close()
 
 # ==========================================================
-# CSS
+# STYLE
 # ==========================================================
 
 style = """
 <style>
 *{box-sizing:border-box}
-body{
-margin:0;
-font-family:Arial,sans-serif;
-background:#eef2f7;
-}
-.layout{
-display:flex;
-min-height:100vh;
-}
+body{margin:0;font-family:Arial;background:#eef2f7}
+.layout{display:flex;min-height:100vh}
 .sidebar{
-width:240px;
+width:230px;
 background:#0f172a;
 color:white;
 padding:25px;
@@ -89,13 +80,13 @@ padding:12px 0;
 color:#cbd5e1;
 text-decoration:none;
 }
-.sidebar a:hover{color:white;}
-.main{flex:1;padding:30px;}
+.sidebar a:hover{color:white}
+.main{flex:1;padding:30px}
 .card{
 background:white;
 padding:22px;
 border-radius:16px;
-box-shadow:0 8px 20px rgba(0,0,0,.06);
+box-shadow:0 8px 18px rgba(0,0,0,.06);
 margin-bottom:20px;
 }
 .grid{
@@ -120,14 +111,14 @@ border-radius:10px;
 button{
 width:100%;
 padding:12px;
-background:#2563eb;
-color:white;
 border:none;
 border-radius:10px;
+background:#2563eb;
+color:white;
 font-weight:bold;
 cursor:pointer;
 }
-button:hover{background:#1d4ed8;}
+button:hover{background:#1d4ed8}
 table{
 width:100%;
 border-collapse:collapse;
@@ -137,7 +128,7 @@ padding:12px;
 border-bottom:1px solid #e5e7eb;
 text-align:left;
 }
-th{background:#f8fafc;}
+th{background:#f8fafc}
 .result{
 padding:14px;
 border-radius:12px;
@@ -164,9 +155,7 @@ padding:30px;
 border-radius:18px;
 box-shadow:0 10px 25px rgba(0,0,0,.08);
 }
-.auth h1,.auth h2{text-align:center;}
-.auth p{text-align:center;}
-pre{white-space:pre-wrap;font-size:13px;}
+pre{white-space:pre-wrap;font-size:13px}
 </style>
 """
 
@@ -227,12 +216,11 @@ def register():
       <div class='auth'>
         <h2>Create Account</h2>
         <form method='POST'>
-          <input name='username' placeholder='Username' required>
-          <input type='password' name='password' placeholder='Password' required>
-          <button>Create Account</button>
+        <input name='username' required placeholder='Username'>
+        <input type='password' name='password' required placeholder='Password'>
+        <button>Create Account</button>
         </form>
         <p style='color:red'>{msg}</p>
-        <p><a href='/login'>Login</a></p>
       </div>
     </div>
     </body></html>
@@ -275,9 +263,9 @@ def login():
       <div class='auth'>
         <h2>Login</h2>
         <form method='POST'>
-          <input name='username' placeholder='Username' required>
-          <input type='password' name='password' placeholder='Password' required>
-          <button>Login</button>
+        <input name='username' required placeholder='Username'>
+        <input type='password' name='password' required placeholder='Password'>
+        <button>Login</button>
         </form>
         <p style='color:red'>{msg}</p>
       </div>
@@ -307,7 +295,10 @@ def dashboard():
     user = session["user"]
     pred = ""
 
+    # ======================================================
     # TRAIN
+    # ======================================================
+
     if request.method == "POST" and "train" in request.form:
 
         try:
@@ -325,7 +316,11 @@ def dashboard():
 
             prep = ColumnTransformer([
                 ("text",
-                 TfidfVectorizer(stop_words="english", ngram_range=(1,2)),
+                 TfidfVectorizer(
+                     stop_words="english",
+                     max_features=3000,
+                     ngram_range=(1,1)
+                 ),
                  "text"),
 
                 ("cat",
@@ -339,9 +334,8 @@ def dashboard():
 
             algos = {
                 "SVM": LinearSVC(class_weight="balanced"),
-                "Logistic": LogisticRegression(max_iter=4000),
-                "Forest": RandomForestClassifier(n_estimators=300),
-                "Tree": DecisionTreeClassifier(max_depth=8)
+                "Logistic": LogisticRegression(max_iter=1500),
+                "Tree": DecisionTreeClassifier(max_depth=6)
             }
 
             models = {}
@@ -356,6 +350,7 @@ def dashboard():
                 ])
 
                 pipe.fit(X_train, y_train)
+
                 yp = pipe.predict(X_test)
 
                 acc = round(accuracy_score(y_test, yp)*100,2)
@@ -372,93 +367,37 @@ def dashboard():
             reports_store[user] = classification_report(y_test, best_pred)
 
             # ==================================================
-            # ULTRA HD CONFUSION MATRIX
+            # LOW MEMORY CHARTS
             # ==================================================
 
             cm = confusion_matrix(y_test, best_pred)
 
-            plt.figure(figsize=(10,8), dpi=500)
-
-            sns.heatmap(
-                cm,
-                annot=True,
-                fmt="d",
-                cmap="Blues",
-                cbar=False,
-                linewidths=2,
-                linecolor="white",
-                annot_kws={"size":18,"weight":"bold"}
-            )
-
-            plt.title("Confusion Matrix", fontsize=24, fontweight="bold")
-            plt.xlabel("Predicted", fontsize=18)
-            plt.ylabel("Actual", fontsize=18)
-
+            plt.figure(figsize=(7,5), dpi=150)
+            sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
             plt.tight_layout()
-
-            plt.savefig(
-                f"static/{user}_cm.png",
-                dpi=700,
-                bbox_inches="tight"
-            )
-
+            plt.savefig(f"static/{user}_cm.png")
             plt.close()
-
-            # ==================================================
-            # ULTRA HD PIE CHART
-            # ==================================================
 
             counts = df["label"].value_counts()
 
-            values = [counts.get(0,0), counts.get(1,0)]
-            labels = ["Genuine", "Fake"]
-
-            plt.figure(figsize=(10,10), dpi=600)
-
-            explode = (0.03, 0.08)
-
+            plt.figure(figsize=(7,7), dpi=150)
             plt.pie(
-                values,
-                labels=labels,
-                autopct=lambda p:
-                f"{p:.1f}%\n({int(round(p*sum(values)/100))})",
-                startangle=90,
-                pctdistance=0.72,
-                explode=explode,
-                wedgeprops=dict(
-                    edgecolor="white",
-                    linewidth=4
-                ),
-                textprops=dict(
-                    fontsize=18,
-                    fontweight="bold"
-                )
+                [counts.get(0,0), counts.get(1,0)],
+                labels=["Genuine","Fake"],
+                autopct="%1.1f%%",
+                startangle=90
             )
-
-            centre = plt.Circle((0,0),0.56,fc="white")
-            fig = plt.gcf()
-            fig.gca().add_artist(centre)
-
-            plt.title(
-                "Dataset Genuine vs Fake Ratio",
-                fontsize=24,
-                fontweight="bold"
-            )
-
             plt.tight_layout()
-
-            plt.savefig(
-                f"static/{user}_pie.png",
-                dpi=800,
-                bbox_inches="tight"
-            )
-
+            plt.savefig(f"static/{user}_pie.png")
             plt.close()
 
         except Exception as e:
-            pred = f"Training Error: {e}"
+            pred = str(e)
 
+    # ======================================================
     # PREDICT
+    # ======================================================
+
     if request.method == "POST" and "predict" in request.form:
 
         try:
@@ -476,7 +415,7 @@ def dashboard():
                 "verified_account": 1
             }])
 
-            bad = ["otp","claim","urgent","winner","click","bank"]
+            bad = ["otp","winner","claim","urgent","click","bank"]
 
             if any(i in msg.lower() for i in bad):
                 sample["link"] = "fake.xyz"
@@ -489,8 +428,8 @@ def dashboard():
 
             pred = "Fake Giveaway Detected" if out == 1 else "Genuine Giveaway"
 
-        except Exception as e:
-            pred = f"Prediction Error: {e}"
+        except:
+            pred = "Train model first"
 
     scores = scores_store.get(user,{})
     report = reports_store.get(user,"")
@@ -509,93 +448,89 @@ def dashboard():
 
     <div class='layout'>
 
-      <div class='sidebar'>
-        <h2>Detector Pro</h2>
-        <a href='/dashboard'>Dashboard</a>
-        <a href='/logout'>Logout</a>
-      </div>
+    <div class='sidebar'>
+      <h2>Detector Pro</h2>
+      <a href='/dashboard'>Dashboard</a>
+      <a href='/logout'>Logout</a>
+    </div>
 
-      <div class='main'>
+    <div class='main'>
 
-        <div class='grid'>
+      <div class='grid'>
 
-          <div class='card'>
-            <div class='metric'>{len(scores)}</div>
-            Models
-          </div>
-
-          <div class='card'>
-            <div class='metric'>{max(scores.values()) if scores else 0}%</div>
-            Best Accuracy
-          </div>
-
-          <div class='card'>
-            <div class='metric'>AI</div>
-            Detection
-          </div>
-
+        <div class='card'>
+          <div class='metric'>{len(scores)}</div>
+          Models
         </div>
 
         <div class='card'>
-          <h2>Upload Dataset</h2>
-          <form method='POST' enctype='multipart/form-data'>
-            <input type='file' name='file' required>
-            <button name='train'>Train Models</button>
-          </form>
+          <div class='metric'>{max(scores.values()) if scores else 0}%</div>
+          Accuracy
         </div>
 
         <div class='card'>
-          <h2>Quick Live Prediction</h2>
-
-          <form method='POST'>
-
-            <select name='model'>{options}</select>
-
-            <textarea
-            name='message'
-            rows='4'
-            placeholder='Enter giveaway text'></textarea>
-
-            <select name='platform'>
-              <option>Instagram</option>
-              <option>Facebook</option>
-              <option>Twitter</option>
-              <option>YouTube</option>
-            </select>
-
-            <button name='predict'>Check</button>
-
-          </form>
-
-          <div class='result'>{pred}</div>
-
-        </div>
-
-        <div class='card'>
-          <h2>Accuracy Table</h2>
-          <table>
-            <tr><th>Model</th><th>Accuracy</th></tr>
-            {rows}
-          </table>
-        </div>
-
-        <div class='card'>
-          <h2>Classification Report</h2>
-          <pre>{report}</pre>
-        </div>
-
-        <div class='card'>
-          <h2>Confusion Matrix</h2>
-          <img src='/static/{user}_cm.png'>
-        </div>
-
-        <div class='card'>
-          <h2>Dataset Ratio</h2>
-          <img src='/static/{user}_pie.png'>
+          <div class='metric'>AI</div>
+          Detection
         </div>
 
       </div>
 
+      <div class='card'>
+        <h2>Upload Dataset</h2>
+        <form method='POST' enctype='multipart/form-data'>
+        <input type='file' name='file' required>
+        <button name='train'>Train Models</button>
+        </form>
+      </div>
+
+      <div class='card'>
+        <h2>Quick Prediction</h2>
+
+        <form method='POST'>
+        <select name='model'>{options}</select>
+
+        <textarea
+        name='message'
+        rows='4'
+        placeholder='Enter message'></textarea>
+
+        <select name='platform'>
+        <option>Instagram</option>
+        <option>Facebook</option>
+        <option>Twitter</option>
+        <option>YouTube</option>
+        </select>
+
+        <button name='predict'>Check</button>
+        </form>
+
+        <div class='result'>{pred}</div>
+      </div>
+
+      <div class='card'>
+        <h2>Accuracy Table</h2>
+        <table>
+        <tr><th>Model</th><th>Accuracy</th></tr>
+        {rows}
+        </table>
+      </div>
+
+      <div class='card'>
+        <h2>Classification Report</h2>
+        <pre>{report}</pre>
+      </div>
+
+      <div class='card'>
+        <h2>Confusion Matrix</h2>
+        <img src='/static/{user}_cm.png'>
+      </div>
+
+      <div class='card'>
+        <h2>Dataset Ratio</h2>
+        <img src='/static/{user}_pie.png'>
+      </div>
+
+    </div>
     </div>
 
     </body></html>
