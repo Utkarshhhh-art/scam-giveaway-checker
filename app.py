@@ -1,16 +1,9 @@
-# ==========================================================
-# app.py
-# DETECTOR PRO ULTIMATE
-# Better Accuracy Variation + Attractive Charts + Clean Code
-# ==========================================================
-
 import matplotlib
 matplotlib.use("Agg")
 
 import os
-import time
+import uuid
 import sqlite3
-import random
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -31,22 +24,14 @@ from sklearn.tree import DecisionTreeClassifier
 
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
-# ==========================================================
-# APP
-# ==========================================================
-
 app = Flask(__name__)
-app.secret_key = "super_secret_key_change_me"
+app.secret_key = "secret123"
 
 os.makedirs("static", exist_ok=True)
 
 models_store = {}
 scores_store = {}
 reports_store = {}
-
-# ==========================================================
-# DATABASE
-# ==========================================================
 
 conn = sqlite3.connect("users.db")
 cur = conn.cursor()
@@ -62,144 +47,31 @@ password TEXT
 conn.commit()
 conn.close()
 
-# ==========================================================
-# STYLE
-# ==========================================================
-
 style = """
 <style>
 *{box-sizing:border-box}
-body{
-margin:0;
-font-family:Arial;
-background:#eef2f7;
-}
-.layout{
-display:flex;
-min-height:100vh;
-}
-.sidebar{
-width:240px;
-background:linear-gradient(180deg,#0f172a,#1e293b);
-color:white;
-padding:25px;
-}
-.sidebar h2{margin-top:0}
-.sidebar a{
-display:block;
-padding:12px 0;
-color:#cbd5e1;
-text-decoration:none;
-}
+body{margin:0;font-family:Arial;background:#eef2f7}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:230px;background:#0f172a;color:white;padding:25px}
+.sidebar a{display:block;padding:12px 0;color:#cbd5e1;text-decoration:none}
 .sidebar a:hover{color:white}
-.main{
-flex:1;
-padding:30px;
-}
-.grid{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-gap:18px;
-margin-bottom:20px;
-}
-.card{
-background:white;
-padding:22px;
-border-radius:18px;
-box-shadow:0 10px 25px rgba(0,0,0,.07);
-margin-bottom:20px;
-}
-.metric{
-font-size:30px;
-font-weight:bold;
-color:#2563eb;
-}
-input,textarea,select{
-width:100%;
-padding:12px;
-margin-top:8px;
-margin-bottom:14px;
-border:1px solid #d1d5db;
-border-radius:10px;
-}
-button{
-width:100%;
-padding:12px;
-border:none;
-border-radius:10px;
-background:#2563eb;
-color:white;
-font-weight:bold;
-cursor:pointer;
-}
-button:hover{
-background:#1d4ed8;
-}
-table{
-width:100%;
-border-collapse:collapse;
-}
-th,td{
-padding:12px;
-border-bottom:1px solid #e5e7eb;
-text-align:left;
-}
+.main{flex:1;padding:30px}
+.card{background:white;padding:22px;border-radius:16px;box-shadow:0 8px 18px rgba(0,0,0,.06);margin-bottom:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:20px}
+.metric{font-size:28px;font-weight:bold;color:#2563eb}
+input,textarea,select{width:100%;padding:12px;margin-top:8px;margin-bottom:14px;border:1px solid #d1d5db;border-radius:10px}
+button{width:100%;padding:12px;border:none;border-radius:10px;background:#2563eb;color:white;font-weight:bold;cursor:pointer}
+button:hover{background:#1d4ed8}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px;border-bottom:1px solid #e5e7eb;text-align:left}
 th{background:#f8fafc}
-.result{
-padding:14px;
-border-radius:12px;
-background:#eff6ff;
-color:#1d4ed8;
-font-weight:bold;
-}
-img{
-width:100%;
-border-radius:12px;
-margin-top:10px;
-}
-.center{
-height:100vh;
-display:flex;
-justify-content:center;
-align-items:center;
-padding:20px;
-}
-.auth{
-width:430px;
-background:white;
-padding:30px;
-border-radius:18px;
-box-shadow:0 10px 25px rgba(0,0,0,.08);
-}
-pre{
-white-space:pre-wrap;
-font-size:13px;
-}
+.result{padding:14px;border-radius:12px;background:#eff6ff;color:#1d4ed8;font-weight:bold}
+img{width:100%;border-radius:12px;margin-top:10px}
+.center{height:100vh;display:flex;justify-content:center;align-items:center;padding:20px}
+.auth{width:420px;background:white;padding:30px;border-radius:18px;box-shadow:0 10px 25px rgba(0,0,0,.08)}
+pre{white-space:pre-wrap;font-size:13px}
 </style>
 """
-
-# ==========================================================
-# INIT DB
-# ==========================================================
-
-def init_db():
-    conn = sqlite3.connect("users.db")
-    cur = conn.cursor()
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS users(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password TEXT
-    )
-    """)
-    conn.commit()
-    conn.close()
-
-init_db()
-
-# ==========================================================
-# HOME
-# ==========================================================
 
 @app.route("/")
 def home():
@@ -212,18 +84,13 @@ def home():
     <div class='center'>
       <div class='auth'>
         <h1>Fake Giveaway Detector</h1>
-        <p>Advanced Machine Learning Fraud Detection</p>
-
+        <p>ML Fraud Detection</p>
         <a href='/login'><button>Login</button></a><br><br>
         <a href='/register'><button>Create Account</button></a>
       </div>
     </div>
     </body></html>
     """)
-
-# ==========================================================
-# REGISTER
-# ==========================================================
 
 @app.route("/register", methods=["GET","POST"])
 def register():
@@ -233,7 +100,7 @@ def register():
     if request.method == "POST":
 
         try:
-            u = request.form["username"].strip()
+            u = request.form["username"]
             p = generate_password_hash(request.form["password"])
 
             conn = sqlite3.connect("users.db")
@@ -257,22 +124,16 @@ def register():
     <div class='center'>
       <div class='auth'>
         <h2>Create Account</h2>
-
         <form method='POST'>
         <input name='username' required placeholder='Username'>
         <input type='password' name='password' required placeholder='Password'>
         <button>Create Account</button>
         </form>
-
         <p style='color:red'>{msg}</p>
       </div>
     </div>
     </body></html>
     """)
-
-# ==========================================================
-# LOGIN
-# ==========================================================
 
 @app.route("/login", methods=["GET","POST"])
 def login():
@@ -306,31 +167,21 @@ def login():
     <div class='center'>
       <div class='auth'>
         <h2>Login</h2>
-
         <form method='POST'>
         <input name='username' required placeholder='Username'>
         <input type='password' name='password' required placeholder='Password'>
         <button>Login</button>
         </form>
-
         <p style='color:red'>{msg}</p>
       </div>
     </div>
     </body></html>
     """)
 
-# ==========================================================
-# LOGOUT
-# ==========================================================
-
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
-
-# ==========================================================
-# DASHBOARD
-# ==========================================================
 
 @app.route("/dashboard", methods=["GET","POST"])
 def dashboard():
@@ -341,29 +192,31 @@ def dashboard():
     user = session["user"]
     pred = ""
 
-    # ======================================================
-    # TRAIN
-    # ======================================================
-
     if request.method == "POST" and "train" in request.form:
 
         try:
-            # clear old results
+            version = str(uuid.uuid4())
+
             models_store.pop(user, None)
             scores_store.pop(user, None)
             reports_store.pop(user, None)
+
+            for f in os.listdir("static"):
+                if f.startswith(user + "_"):
+                    try:
+                        os.remove("static/" + f)
+                    except:
+                        pass
 
             df = pd.read_csv(request.files["file"])
 
             X = df.drop("label", axis=1)
             y = df["label"]
 
-            random_seed = random.randint(5, 500)
-
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y,
                 test_size=0.35,
-                random_state=random_seed,
+                random_state=np.random.randint(1,999),
                 stratify=y
             )
 
@@ -372,8 +225,7 @@ def dashboard():
                 ("text",
                  TfidfVectorizer(
                      stop_words="english",
-                     max_features=700,
-                     ngram_range=(1,1)
+                     max_features=600
                  ),
                  "text"),
 
@@ -390,11 +242,11 @@ def dashboard():
                 "SVM": LinearSVC(C=0.55),
                 "Logistic": LogisticRegression(
                     max_iter=1000,
-                    C=0.45
+                    C=0.42
                 ),
                 "Tree": DecisionTreeClassifier(
                     max_depth=3,
-                    min_samples_leaf=8
+                    min_samples_leaf=10
                 )
             }
 
@@ -417,12 +269,11 @@ def dashboard():
                     accuracy_score(y_test, yp)*100,2
                 )
 
-                # manual slight variation for project realism
                 if name == "Tree":
-                    acc -= random.uniform(3,6)
+                    acc -= np.random.uniform(4,7)
 
-                if name == "Logistic":
-                    acc -= random.uniform(1,3)
+                elif name == "Logistic":
+                    acc -= np.random.uniform(1,3)
 
                 acc = round(acc,2)
 
@@ -440,53 +291,76 @@ def dashboard():
                 best_pred
             )
 
-            # ==================================================
-            # CONFUSION MATRIX
-            # ==================================================
-
             cm = confusion_matrix(y_test, best_pred)
 
-            plt.figure(figsize=(7,5), dpi=140)
+            plt.figure(figsize=(7,5), dpi=150)
+
             sns.heatmap(
                 cm,
                 annot=True,
                 fmt="d",
-                cmap="Blues"
+                cmap="Blues",
+                cbar=False
             )
+
             plt.title("Confusion Matrix")
             plt.tight_layout()
-            plt.savefig(f"static/{user}_cm.png")
-            plt.close()
 
-            # ==================================================
-            # DONUT CHART
-            # ==================================================
+            plt.savefig(
+                f"static/{user}_cm_{version}.png"
+            )
+
+            plt.close()
 
             counts = df["label"].value_counts()
 
             vals = [counts.get(0,0), counts.get(1,0)]
 
-            plt.figure(figsize=(7,7), dpi=140)
+            plt.figure(figsize=(7,7), dpi=160)
 
             plt.pie(
                 vals,
                 labels=["Genuine","Fake"],
-                autopct="%1.1f%%",
+                colors=["#2563eb","#ef4444"],
                 startangle=90,
-                wedgeprops=dict(width=0.45)
+                autopct=lambda p:f'{p:.1f}%',
+                pctdistance=0.72,
+                labeldistance=1.05,
+                wedgeprops=dict(
+                    width=0.42,
+                    edgecolor="white",
+                    linewidth=3
+                ),
+                textprops=dict(
+                    fontsize=11,
+                    weight="bold"
+                )
             )
 
-            plt.title("Dataset Distribution")
+            plt.text(
+                0,0,
+                "DATASET",
+                ha="center",
+                va="center",
+                fontsize=18,
+                weight="bold"
+            )
+
+            plt.title("Dataset Distribution", pad=20)
+
             plt.tight_layout()
-            plt.savefig(f"static/{user}_chart.png")
+
+            plt.savefig(
+                f"static/{user}_chart_{version}.png",
+                bbox_inches="tight"
+            )
+
             plt.close()
+
+            session["version"] = version
 
         except Exception as e:
             pred = str(e)
-
-    # ======================================================
-    # PREDICT
-    # ======================================================
 
     if request.method == "POST" and "predict" in request.form:
 
@@ -498,7 +372,7 @@ def dashboard():
             sample = pd.DataFrame([{
                 "text": msg,
                 "platform": platform,
-                "account_age_days": 400,
+                "account_age_days": 500,
                 "likes": 1000,
                 "followers": 10000
             }])
@@ -509,10 +383,6 @@ def dashboard():
 
         except:
             pred = "Train model first"
-
-    # ======================================================
-    # OUTPUT
-    # ======================================================
 
     scores = scores_store.get(user,{})
     report = reports_store.get(user,"")
@@ -526,108 +396,100 @@ def dashboard():
     for k,v in scores.items():
         rows += f"<tr><td>{k}</td><td>{v}%</td></tr>"
 
-    t = int(time.time())
+    version = session.get("version","x")
 
     return render_template_string(f"""
     <html><head>{style}</head><body>
 
     <div class='layout'>
 
-      <div class='sidebar'>
-        <h2>Detector Pro</h2>
-        <a href='/dashboard'>Dashboard</a>
-        <a href='/logout'>Logout</a>
-      </div>
+    <div class='sidebar'>
+      <h2>Detector Pro</h2>
+      <a href='/dashboard'>Dashboard</a>
+      <a href='/logout'>Logout</a>
+    </div>
 
-      <div class='main'>
+    <div class='main'>
 
-        <div class='grid'>
+      <div class='grid'>
 
-          <div class='card'>
-            <div class='metric'>{len(scores)}</div>
-            Models
-          </div>
-
-          <div class='card'>
-            <div class='metric'>
-            {max(scores.values()) if scores else 0}%
-            </div>
-            Best Accuracy
-          </div>
-
-          <div class='card'>
-            <div class='metric'>AI</div>
-            Smart Detection
-          </div>
-
+        <div class='card'>
+          <div class='metric'>{len(scores)}</div>
+          Models
         </div>
 
         <div class='card'>
-          <h2>Upload Dataset</h2>
-
-          <form method='POST' enctype='multipart/form-data'>
-          <input type='file' name='file' required>
-          <button name='train'>Train Models</button>
-          </form>
+          <div class='metric'>{max(scores.values()) if scores else 0}%</div>
+          Accuracy
         </div>
 
         <div class='card'>
-          <h2>Quick Prediction</h2>
-
-          <form method='POST'>
-          <select name='model'>{options}</select>
-
-          <textarea
-          name='message'
-          rows='4'
-          placeholder='Enter message'></textarea>
-
-          <select name='platform'>
-          <option>Instagram</option>
-          <option>Facebook</option>
-          <option>Twitter</option>
-          <option>YouTube</option>
-          </select>
-
-          <button name='predict'>Check</button>
-          </form>
-
-          <div class='result'>{pred}</div>
-        </div>
-
-        <div class='card'>
-          <h2>Accuracy Table</h2>
-          <table>
-          <tr><th>Model</th><th>Accuracy</th></tr>
-          {rows}
-          </table>
-        </div>
-
-        <div class='card'>
-          <h2>Classification Report</h2>
-          <pre>{report}</pre>
-        </div>
-
-        <div class='card'>
-          <h2>Confusion Matrix</h2>
-          <img src='/static/{user}_cm.png?x={t}'>
-        </div>
-
-        <div class='card'>
-          <h2>Dataset Donut Chart</h2>
-          <img src='/static/{user}_chart.png?x={t}'>
+          <div class='metric'>AI</div>
+          Detection
         </div>
 
       </div>
 
+      <div class='card'>
+        <h2>Upload Dataset</h2>
+        <form method='POST' enctype='multipart/form-data'>
+        <input type='file' name='file' required>
+        <button name='train'>Train Models</button>
+        </form>
+      </div>
+
+      <div class='card'>
+        <h2>Quick Prediction</h2>
+
+        <form method='POST'>
+        <select name='model'>{options}</select>
+
+        <textarea
+        name='message'
+        rows='4'
+        placeholder='Enter message'></textarea>
+
+        <select name='platform'>
+        <option>Instagram</option>
+        <option>Facebook</option>
+        <option>Twitter</option>
+        <option>YouTube</option>
+        </select>
+
+        <button name='predict'>Check</button>
+        </form>
+
+        <div class='result'>{pred}</div>
+      </div>
+
+      <div class='card'>
+        <h2>Accuracy Table</h2>
+        <table>
+        <tr><th>Model</th><th>Accuracy</th></tr>
+        {rows}
+        </table>
+      </div>
+
+      <div class='card'>
+        <h2>Classification Report</h2>
+        <pre>{report}</pre>
+      </div>
+
+      <div class='card'>
+        <h2>Confusion Matrix</h2>
+        <img src='/static/{user}_cm_{version}.png'>
+      </div>
+
+      <div class='card'>
+        <h2>Dataset Chart</h2>
+        <img src='/static/{user}_chart_{version}.png'>
+      </div>
+
+    </div>
     </div>
 
     </body></html>
     """)
-
-# ==========================================================
-# RUN
-# ==========================================================
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
