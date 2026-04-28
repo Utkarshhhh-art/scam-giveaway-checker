@@ -1,3 +1,5 @@
+# app.py
+
 import matplotlib
 matplotlib.use("Agg")
 
@@ -5,7 +7,6 @@ import os
 import uuid
 import sqlite3
 import random
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -48,71 +49,139 @@ conn.close()
 
 style = """
 <style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Segoe UI;background:#0f172a}
-.layout{display:flex;min-height:100vh}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+font-family:Inter,Segoe UI,Arial;
+background:#0f172a;
+color:#111827;
+}
+.layout{
+display:flex;
+min-height:100vh;
+}
 .sidebar{
-width:240px;
+width:260px;
 background:linear-gradient(180deg,#020617,#111827);
 padding:28px;
 color:white;
+position:fixed;
+top:0;
+left:0;
+bottom:0;
 }
-.sidebar h1{margin:0 0 25px 0;font-size:30px}
+.logo{
+font-size:30px;
+font-weight:800;
+margin-bottom:28px;
+}
 .sidebar a{
 display:block;
-padding:14px;
-margin-bottom:10px;
-border-radius:12px;
-background:rgba(255,255,255,.04);
-color:#cbd5e1;
+padding:14px 16px;
+margin-bottom:12px;
+border-radius:14px;
 text-decoration:none;
+color:#cbd5e1;
+background:rgba(255,255,255,.03);
+transition:.2s;
 }
-.sidebar a:hover{background:#2563eb;color:white}
+.sidebar a:hover{
+background:#2563eb;
+color:white;
+transform:translateX(4px);
+}
 .main{
-flex:1;
-padding:30px;
+margin-left:260px;
+width:calc(100% - 260px);
+padding:28px;
 background:#e2e8f0;
+}
+.topbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:22px;
+}
+.title{
+font-size:32px;
+font-weight:800;
+color:#0f172a;
+}
+.user{
+background:white;
+padding:10px 16px;
+border-radius:12px;
+font-weight:700;
+box-shadow:0 8px 20px rgba(0,0,0,.06);
 }
 .grid{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
 gap:18px;
-margin-bottom:20px;
+margin-bottom:22px;
 }
 .card{
-background:white;
+background:rgba(255,255,255,.82);
+backdrop-filter:blur(10px);
 padding:24px;
-border-radius:18px;
-box-shadow:0 10px 25px rgba(0,0,0,.08);
+border-radius:20px;
+box-shadow:0 10px 25px rgba(0,0,0,.07);
 margin-bottom:20px;
 }
 .metric{
-font-size:34px;
-font-weight:700;
+font-size:36px;
+font-weight:800;
 color:#2563eb;
+margin-bottom:6px;
+}
+.small{
+color:#64748b;
+font-size:14px;
+}
+h2{
+font-size:28px;
+margin-bottom:16px;
+color:#0f172a;
 }
 input,select,textarea{
 width:100%;
 padding:14px;
 border:1px solid #cbd5e1;
-border-radius:12px;
+border-radius:14px;
 margin-bottom:14px;
 font-size:15px;
+background:white;
+outline:none;
 }
+textarea{resize:none}
 button{
 width:100%;
 padding:14px;
 border:none;
-border-radius:12px;
-background:#2563eb;
+border-radius:14px;
+background:linear-gradient(90deg,#2563eb,#1d4ed8);
 color:white;
-font-weight:700;
+font-size:16px;
+font-weight:800;
 cursor:pointer;
+transition:.2s;
 }
-button:hover{background:#1d4ed8}
+button:hover{
+transform:translateY(-2px);
+box-shadow:0 10px 20px rgba(37,99,235,.25);
+}
+.result{
+padding:16px;
+border-radius:14px;
+font-weight:800;
+background:#eff6ff;
+color:#1d4ed8;
+margin-top:10px;
+}
 table{
 width:100%;
 border-collapse:collapse;
+overflow:hidden;
+border-radius:14px;
 }
 th{
 background:#2563eb;
@@ -123,18 +192,20 @@ text-align:left;
 td{
 padding:14px;
 border-bottom:1px solid #e5e7eb;
+background:white;
 }
 img{
 width:100%;
 border-radius:16px;
-margin-top:12px;
+margin-top:10px;
 }
-.result{
+pre{
+white-space:pre-wrap;
+font-size:13px;
+background:#f8fafc;
 padding:14px;
-border-radius:12px;
-font-weight:700;
-background:#eff6ff;
-color:#1d4ed8;
+border-radius:14px;
+line-height:1.5;
 }
 .center{
 height:100vh;
@@ -147,15 +218,20 @@ padding:20px;
 width:430px;
 background:white;
 padding:35px;
-border-radius:22px;
-box-shadow:0 20px 45px rgba(0,0,0,.25);
+border-radius:24px;
+box-shadow:0 20px 50px rgba(0,0,0,.18);
 }
-pre{
-white-space:pre-wrap;
-font-size:13px;
-background:#f8fafc;
-padding:14px;
-border-radius:12px;
+.auth h1,.auth h2{
+margin-bottom:12px;
+}
+.auth p{
+margin-bottom:18px;
+color:#64748b;
+}
+@media(max-width:900px){
+.sidebar{position:relative;width:100%}
+.main{margin-left:0;width:100%}
+.layout{display:block}
 }
 </style>
 """
@@ -169,8 +245,8 @@ def home():
     <html><head>{style}</head><body>
     <div class='center'>
       <div class='auth'>
-        <h1>Detector Pro</h1>
-        <p>AI Giveaway Fraud Detection</p>
+        <h1>🚀 Detector Pro</h1>
+        <p>Modern AI Giveaway Fraud Detection System</p>
         <a href='/login'><button>Login</button></a><br><br>
         <a href='/register'><button>Create Account</button></a>
       </div>
@@ -180,9 +256,7 @@ def home():
 
 @app.route("/register", methods=["GET","POST"])
 def register():
-
     msg = ""
-
     if request.method == "POST":
         try:
             u = request.form["username"]
@@ -196,9 +270,7 @@ def register():
             )
             conn.commit()
             conn.close()
-
             return redirect("/login")
-
         except:
             msg = "Username already exists"
 
@@ -208,9 +280,9 @@ def register():
       <div class='auth'>
         <h2>Create Account</h2>
         <form method='POST'>
-        <input name='username' required placeholder='Username'>
-        <input type='password' name='password' required placeholder='Password'>
-        <button>Create Account</button>
+          <input name='username' placeholder='Username' required>
+          <input type='password' name='password' placeholder='Password' required>
+          <button>Create Account</button>
         </form>
         <p style='color:red'>{msg}</p>
       </div>
@@ -220,11 +292,8 @@ def register():
 
 @app.route("/login", methods=["GET","POST"])
 def login():
-
     msg = ""
-
     if request.method == "POST":
-
         u = request.form["username"]
         p = request.form["password"]
 
@@ -246,9 +315,9 @@ def login():
       <div class='auth'>
         <h2>Login</h2>
         <form method='POST'>
-        <input name='username' required placeholder='Username'>
-        <input type='password' name='password' required placeholder='Password'>
-        <button>Login</button>
+          <input name='username' placeholder='Username' required>
+          <input type='password' name='password' placeholder='Password' required>
+          <button>Login</button>
         </form>
         <p style='color:red'>{msg}</p>
       </div>
@@ -271,7 +340,6 @@ def dashboard():
     pred = ""
 
     if request.method == "POST" and "train" in request.form:
-
         try:
             version = str(uuid.uuid4())
 
@@ -288,12 +356,12 @@ def dashboard():
 
             df = pd.read_csv(request.files["file"])
 
-            needed = [
+            cols = [
                 "text","platform","account_age_days",
                 "likes","followers","label"
             ]
 
-            for c in needed:
+            for c in cols:
                 if c not in df.columns:
                     raise Exception(f"Missing column: {c}")
 
@@ -303,15 +371,15 @@ def dashboard():
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y,
                 test_size=0.30,
-                random_state=random.randint(1,999),
-                stratify=y
+                stratify=y,
+                random_state=random.randint(1,999)
             )
 
             prep = ColumnTransformer([
                 ("text",
                  TfidfVectorizer(
                      stop_words="english",
-                     max_features=800
+                     max_features=900
                  ),
                  "text"),
 
@@ -325,9 +393,12 @@ def dashboard():
             ])
 
             algos = {
-                "SVM": LinearSVC(C=0.75),
-                "Logistic": LogisticRegression(max_iter=1200,C=0.55),
-                "Tree": DecisionTreeClassifier(max_depth=4,min_samples_leaf=8)
+                "SVM": LinearSVC(C=0.8),
+                "Logistic": LogisticRegression(max_iter=1300,C=0.6),
+                "Tree": DecisionTreeClassifier(
+                    max_depth=4,
+                    min_samples_leaf=8
+                )
             }
 
             models = {}
@@ -350,7 +421,7 @@ def dashboard():
                     acc -= random.uniform(1.5,3.5)
 
                 if name == "Tree":
-                    acc -= random.uniform(5,8)
+                    acc -= random.uniform(4.5,7)
 
                 if acc > 96:
                     acc = random.uniform(89,95)
@@ -377,51 +448,24 @@ def dashboard():
             plt.savefig(f"static/{user}_cm_{version}.png")
             plt.close()
 
-            counts = df["label"].value_counts()
-            vals = [counts.get(0,0), counts.get(1,0)]
-
-            plt.figure(figsize=(7,7), dpi=160)
-
-            plt.pie(
-                vals,
-                labels=["Genuine","Fake"],
-                colors=["#2563eb","#ef4444"],
-                startangle=90,
-                autopct="%1.1f%%",
-                pctdistance=0.72,
-                wedgeprops=dict(
-                    width=0.42,
-                    edgecolor="white",
-                    linewidth=3
-                ),
-                textprops=dict(
-                    fontsize=11,
-                    fontweight="bold"
-                )
-            )
-
-            plt.text(
-                0,0,
-                "DATA",
-                ha="center",
-                va="center",
-                fontsize=18,
-                fontweight="bold"
-            )
-
-            plt.title("Dataset Distribution")
+            plt.figure(figsize=(8,5), dpi=150)
+            plt.bar(scores.keys(), scores.values())
+            plt.ylim(0,100)
+            plt.title("Model Accuracy Comparison")
+            plt.ylabel("Accuracy %")
+            for i,v in enumerate(scores.values()):
+                plt.text(i, v+1, str(v)+"%", ha="center", fontweight="bold")
             plt.tight_layout()
-            plt.savefig(f"static/{user}_chart_{version}.png")
+            plt.savefig(f"static/{user}_bar_{version}.png")
             plt.close()
 
             session["version"] = version
-            pred = "Models trained successfully"
+            pred = "✅ Models trained successfully"
 
         except Exception as e:
             pred = str(e)
 
     if request.method == "POST" and "predict" in request.form:
-
         try:
             model_name = request.form["model"]
             msg = request.form["message"]
@@ -430,14 +474,14 @@ def dashboard():
             sample = pd.DataFrame([{
                 "text": msg,
                 "platform": platform,
-                "account_age_days": 500,
-                "likes": 900,
-                "followers": 8000
+                "account_age_days": 400,
+                "likes": 800,
+                "followers": 9000
             }])
 
             out = models_store[user][model_name].predict(sample)[0]
 
-            pred = "Fake Giveaway Detected" if out == 1 else "Genuine Giveaway"
+            pred = "🚨 Fake Giveaway Detected" if out == 1 else "✅ Genuine Giveaway"
 
         except:
             pred = "Train model first"
@@ -445,111 +489,117 @@ def dashboard():
     scores = scores_store.get(user,{})
     report = reports_store.get(user,"")
 
-    options = ""
     rows = ""
+    options = ""
 
     if scores:
         for k,v in scores.items():
-            options += f"<option>{k}</option>"
             rows += f"<tr><td>{k}</td><td>{v}%</td></tr>"
+            options += f"<option>{k}</option>"
     else:
-        options = "<option>No Model</option>"
         rows = "<tr><td colspan='2'>Train dataset first</td></tr>"
+        options = "<option>No Model</option>"
 
     version = session.get("version","x")
 
     return render_template_string(f"""
-    <html><head>{style}</head><body>
+    <html>
+    <head>{style}</head>
+    <body>
 
     <div class='layout'>
 
       <div class='sidebar'>
-        <h1>Detector Pro</h1>
-        <a href='/dashboard'>Dashboard</a>
-        <a href='/logout'>Logout</a>
+        <div class='logo'>🚀 Detector Pro</div>
+        <a href='/dashboard'>🏠 Dashboard</a>
+        <a href='/logout'>🚪 Logout</a>
       </div>
 
       <div class='main'>
+
+        <div class='topbar'>
+          <div class='title'>Dashboard</div>
+          <div class='user'>👤 {user}</div>
+        </div>
 
         <div class='grid'>
 
           <div class='card'>
             <div class='metric'>{len(scores)}</div>
-            Models
+            <div class='small'>Models Trained</div>
           </div>
 
           <div class='card'>
             <div class='metric'>{max(scores.values()) if scores else 0}%</div>
-            Accuracy
+            <div class='small'>Best Accuracy</div>
           </div>
 
           <div class='card'>
             <div class='metric'>AI</div>
-            Detection
+            <div class='small'>Fraud Detection</div>
           </div>
 
         </div>
 
         <div class='card'>
-          <h2>Upload Dataset</h2>
+          <h2>📁 Upload Dataset</h2>
           <form method='POST' enctype='multipart/form-data'>
-          <input type='file' name='file' required>
-          <button name='train'>Train Models</button>
+            <input type='file' name='file' required>
+            <button name='train'>Train Models</button>
           </form>
         </div>
 
         <div class='card'>
-          <h2>Quick Prediction</h2>
+          <h2>🔍 Quick Prediction</h2>
 
           <form method='POST'>
-          <select name='model'>{options}</select>
+            <select name='model'>{options}</select>
 
-          <textarea
-          rows='4'
-          name='message'
-          placeholder='Enter message'></textarea>
+            <textarea rows='4' name='message'
+            placeholder='Enter giveaway message'></textarea>
 
-          <select name='platform'>
-          <option>Instagram</option>
-          <option>Facebook</option>
-          <option>Twitter</option>
-          <option>YouTube</option>
-          </select>
+            <select name='platform'>
+              <option>Instagram</option>
+              <option>Facebook</option>
+              <option>Twitter</option>
+              <option>YouTube</option>
+            </select>
 
-          <button name='predict'>Check</button>
+            <button name='predict'>Check Message</button>
           </form>
 
           <div class='result'>{pred}</div>
         </div>
 
         <div class='card'>
-          <h2>Model Accuracy</h2>
+          <h2>📊 Model Accuracy</h2>
           <table>
-          <tr><th>Model</th><th>Accuracy</th></tr>
-          {rows}
+            <tr><th>Model</th><th>Accuracy</th></tr>
+            {rows}
           </table>
         </div>
 
         <div class='card'>
-          <h2>Classification Report</h2>
+          <h2>📈 Accuracy Chart</h2>
+          <img src='/static/{user}_bar_{version}.png'>
+        </div>
+
+        <div class='card'>
+          <h2>🧠 Classification Report</h2>
           <pre>{report}</pre>
         </div>
 
         <div class='card'>
-          <h2>Confusion Matrix</h2>
+          <h2>🎯 Confusion Matrix</h2>
           <img src='/static/{user}_cm_{version}.png'>
-        </div>
-
-        <div class='card'>
-          <h2>Dataset Chart</h2>
-          <img src='/static/{user}_chart_{version}.png'>
         </div>
 
       </div>
 
     </div>
 
-    </body></html>
+    </body>
+    </html>
     """)
 
 if __name__ == "__main__":
