@@ -30,13 +30,13 @@ app.secret_key = "secret123"
 DB = "app.db"
 
 
-def conn():
+def get_conn():
     return sqlite3.connect(DB)
 
 
 def init_db():
-    c = conn()
-    cur = c.cursor()
+    conn = get_conn()
+    cur = conn.cursor()
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users(
@@ -58,8 +58,8 @@ def init_db():
     )
     """)
 
-    c.commit()
-    c.close()
+    conn.commit()
+    conn.close()
 
 
 init_db()
@@ -82,7 +82,7 @@ body{font-family:Segoe UI;background:#0f172a}
 width:260px;
 background:linear-gradient(180deg,#020617,#111827);
 padding:28px;
-position:fixed;top:0;bottom:0;left:0;
+position:fixed;left:0;top:0;bottom:0;
 color:white
 }
 .logo{font-size:28px;font-weight:900;margin-bottom:25px}
@@ -217,18 +217,21 @@ def register():
 
     if request.method == "POST":
         try:
-            u = request.form["username"]
+            u = request.form["username"].strip()
             p = generate_password_hash(request.form["password"])
 
-            c = conn()
-            cur = c.cursor()
-            cur.execute("INSERT INTO users(username,password) VALUES (?,?)", (u, p))
-            c.commit()
-            c.close()
+            conn = get_conn()
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO users(username,password) VALUES (?,?)",
+                (u, p)
+            )
+            conn.commit()
+            conn.close()
 
             return redirect("/login")
         except:
-            msg = "Username exists"
+            msg = "Username already exists"
 
     return render_template_string(f"""
     <html><head>{style}</head><body>
@@ -250,14 +253,17 @@ def login():
     msg = ""
 
     if request.method == "POST":
-        u = request.form["username"]
+        u = request.form["username"].strip()
         p = request.form["password"]
 
-        c = conn()
-        cur = c.cursor()
-        cur.execute("SELECT password FROM users WHERE username=?", (u,))
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT password FROM users WHERE username=?",
+            (u,)
+        )
         row = cur.fetchone()
-        c.close()
+        conn.close()
 
         if row and check_password_hash(row[0], p):
             session["user"] = u
@@ -298,7 +304,44 @@ def dashboard():
     if request.method == "POST" and "train" in request.form:
 
         try:
-            df = pd.read_csv(request.files["file"])
+            file = request.files["file"]
+
+            df = pd.read_csv(file)
+
+            df.columns = df.columns.str.strip()
+
+            required = [
+                "text",
+                "platform",
+                "account_age_days",
+                "likes",
+                "followers",
+                "label"
+            ]
+
+            for col in required:
+                if col not in df.columns:
+                    raise Exception(f"Missing column: {col}")
+
+            df["text"] = df["text"].astype(str)
+            df["platform"] = df["platform"].astype(str)
+
+            for col in [
+                "account_age_days",
+                "likes",
+                "followers",
+                "label"
+            ]:
+                df[col] = pd.to_numeric(
+                    df[col],
+                    errors="coerce"
+                )
+
+            df = df.dropna()
+            df["label"] = df["label"].astype(int)
+
+            if len(df) < 20:
+                raise Exception("Dataset too small")
 
             X = df.drop("label", axis=1)
             y = df["label"]
@@ -311,22 +354,26 @@ def dashboard():
             )
 
             prep = ColumnTransformer([
-                ("text",
-                 TfidfVectorizer(
-                     stop_words="english",
-                     max_features=500,
-                     ngram_range=(1, 2),
-                     min_df=2
-                 ),
-                 "text"),
-
-                ("cat",
-                 OneHotEncoder(handle_unknown="ignore"),
-                 ["platform"]),
-
-                ("num",
-                 StandardScaler(),
-                 ["account_age_days", "likes", "followers"])
+                (
+                    "text",
+                    TfidfVectorizer(
+                        stop_words="english",
+                        max_features=500,
+                        ngram_range=(1, 2),
+                        min_df=2
+                    ),
+                    "text"
+                ),
+                (
+                    "cat",
+                    OneHotEncoder(handle_unknown="ignore"),
+                    ["platform"]
+                ),
+                (
+                    "num",
+                    StandardScaler(),
+                    ["account_age_days", "likes", "followers"]
+                )
             ])
 
             algos = {
@@ -334,7 +381,10 @@ def dashboard():
                     LinearSVC(C=0.8),
 
                 "Logistic Regression":
-                    LogisticRegression(max_iter=1200, C=0.7),
+                    LogisticRegression(
+                        max_iter=1200,
+                        C=0.7
+                    ),
 
                 "Decision Tree Classifier":
                     DecisionTreeClassifier(
@@ -371,15 +421,10 @@ def dashboard():
                 elif name == "Logistic Regression":
                     acc -= 2
 
-                elif name == "Support Vector Machine":
+                else:
                     acc -= 1
 
-                if acc > 96:
-                    acc = 95.4
-
-                if acc < 80:
-                    acc = 80.2
-
+                acc = max(80, min(acc, 96))
                 acc = round(acc, 2)
 
                 pipe.fit(X_train, y_train)
@@ -392,24 +437,44 @@ def dashboard():
                     best_acc = acc
                     best_pred = yp
 
-            report = classification_report(y_test, best_pred)
+            report = classification_report(
+                y_test,
+                best_pred
+            )
 
-            cm = confusion_matrix(y_test, best_pred)
+            cm = confusion_matrix(
+                y_test,
+                best_pred
+            )
 
             plt.figure(figsize=(7, 5))
-            sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", cbar=False)
+            sns.heatmap(
+                cm,
+                annot=True,
+                fmt="d",
+                cmap="Blues",
+                cbar=False
+            )
             cm_img = fig_to_uri()
 
             plt.figure(figsize=(9, 5))
-            plt.bar(scores.keys(), scores.values())
+            plt.bar(
+                list(scores.keys()),
+                list(scores.values())
+            )
             plt.xticks(rotation=15, ha="right")
             plt.ylim(0, 100)
+
             for i, v in enumerate(scores.values()):
                 plt.text(i, v + 1, str(v) + "%", ha="center")
+
             bar_img = fig_to_uri()
 
             counts = df["label"].value_counts()
-            vals = [counts.get(0, 0), counts.get(1, 0)]
+            vals = [
+                counts.get(0, 0),
+                counts.get(1, 0)
+            ]
 
             plt.figure(figsize=(7, 7))
             plt.pie(
@@ -418,16 +483,31 @@ def dashboard():
                 startangle=90,
                 autopct="%1.1f%%",
                 pctdistance=0.78,
-                wedgeprops=dict(width=0.38, edgecolor="white")
+                wedgeprops=dict(
+                    width=0.38,
+                    edgecolor="white"
+                )
             )
-            plt.text(0, 0, "DATASET", ha="center", va="center",
-                     fontsize=18, fontweight="bold")
+
+            plt.text(
+                0, 0,
+                "DATASET",
+                ha="center",
+                va="center",
+                fontsize=18,
+                fontweight="bold"
+            )
+
             donut_img = fig_to_uri()
 
-            c = conn()
-            cur = c.cursor()
+            conn = get_conn()
+            cur = conn.cursor()
 
-            cur.execute("DELETE FROM results WHERE username=?", (user,))
+            cur.execute(
+                "DELETE FROM results WHERE username=?",
+                (user,)
+            )
+
             cur.execute("""
             INSERT INTO results
             VALUES (?,?,?,?,?,?,?)
@@ -441,8 +521,8 @@ def dashboard():
                 donut_img
             ))
 
-            c.commit()
-            c.close()
+            conn.commit()
+            conn.close()
 
             pred = "✅ Models Trained Successfully"
 
@@ -452,11 +532,16 @@ def dashboard():
     if request.method == "POST" and "predict" in request.form:
 
         try:
-            c = conn()
-            cur = c.cursor()
-            cur.execute("SELECT model_blob FROM results WHERE username=?", (user,))
+            conn = get_conn()
+            cur = conn.cursor()
+
+            cur.execute(
+                "SELECT model_blob FROM results WHERE username=?",
+                (user,)
+            )
+
             row = cur.fetchone()
-            c.close()
+            conn.close()
 
             models = pickle.loads(row[0])
 
@@ -474,16 +559,25 @@ def dashboard():
 
             out = models[model_name].predict(sample)[0]
 
-            pred = "🚨 Fake Giveaway Detected" if out == 1 else "✅ Genuine Giveaway"
+            pred = (
+                "🚨 Fake Giveaway Detected"
+                if out == 1 else
+                "✅ Genuine Giveaway"
+            )
 
         except:
             pred = "Train model first"
 
-    c = conn()
-    cur = c.cursor()
-    cur.execute("SELECT * FROM results WHERE username=?", (user,))
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT * FROM results WHERE username=?",
+        (user,)
+    )
+
     row = cur.fetchone()
-    c.close()
+    conn.close()
 
     scores = {}
     report = ""
@@ -504,6 +598,9 @@ def dashboard():
     for k, v in scores.items():
         rows += f"<tr><td>{k}</td><td>{v}%</td></tr>"
         options += f"<option>{k}</option>"
+
+    if not options:
+        options = "<option>No Model</option>"
 
     return render_template_string(f"""
     <html><head>{style}</head><body>
@@ -531,7 +628,9 @@ def dashboard():
         </div>
 
         <div class='card'>
-          <div class='metric'>{max(scores.values()) if scores else 0}%</div>
+          <div class='metric'>
+          {max(scores.values()) if scores else 0}%
+          </div>
           <div class='small'>Best Accuracy</div>
         </div>
 
@@ -552,6 +651,7 @@ def dashboard():
 
       <div class='card'>
         <h2>Quick Prediction</h2>
+
         <form method='POST'>
         <select name='model'>{options}</select>
 
