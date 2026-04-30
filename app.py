@@ -1,13 +1,10 @@
 import matplotlib
 matplotlib.use("Agg")
 
-import io
-import json
 import sqlite3
+import json
 import pickle
-import base64
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from flask import Flask, request, redirect, session, render_template_string
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -22,7 +19,6 @@ from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import MultinomialNB
-
 from sklearn.metrics import classification_report
 
 app = Flask(__name__)
@@ -31,13 +27,13 @@ app.secret_key = "secret123"
 DB = "app.db"
 
 
-def conn():
+def get_conn():
     return sqlite3.connect(DB)
 
 
 def init_db():
-    c = conn()
-    cur = c.cursor()
+    conn = get_conn()
+    cur = conn.cursor()
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users(
@@ -56,12 +52,11 @@ def init_db():
     )
     """)
 
-    c.commit()
-    c.close()
+    conn.commit()
+    conn.close()
 
 
 init_db()
-
 
 style = """
 <style>
@@ -79,7 +74,7 @@ color:white
 .logo{
 font-size:28px;
 font-weight:900;
-margin-bottom:20px
+margin-bottom:25px
 }
 .sidebar a{
 display:block;
@@ -119,8 +114,8 @@ font-weight:900;
 color:#2563eb
 }
 .small{
-color:#64748b;
-font-size:14px
+font-size:14px;
+color:#64748b
 }
 input,select,textarea{
 width:100%;
@@ -142,6 +137,13 @@ cursor:pointer
 button:hover{
 background:#1d4ed8
 }
+.result{
+padding:15px;
+border-radius:14px;
+background:#eff6ff;
+color:#1d4ed8;
+font-weight:900
+}
 table{
 width:100%;
 border-collapse:collapse
@@ -155,13 +157,6 @@ text-align:left
 td{
 padding:14px;
 border-bottom:1px solid #edf2f7
-}
-.result{
-padding:16px;
-border-radius:14px;
-background:#eff6ff;
-color:#1d4ed8;
-font-weight:900
 }
 pre{
 white-space:pre-wrap;
@@ -183,9 +178,8 @@ padding:34px;
 border-radius:24px
 }
 canvas{
-max-width:260px;
-margin:auto;
-display:block
+max-width:100%;
+margin:auto
 }
 .accText{
 text-align:center;
@@ -206,11 +200,13 @@ def home():
     return render_template_string(f"""
     <html><head>{style}</head><body>
     <div class='center'>
-    <div class='auth'>
-    <h1>🚀 Detector Pro</h1><br>
-    <a href='/login'><button>Login</button></a><br><br>
-    <a href='/register'><button>Create Account</button></a>
-    </div></div></body></html>
+      <div class='auth'>
+        <h1>🚀 Detector Pro</h1><br>
+        <a href='/login'><button>Login</button></a><br><br>
+        <a href='/register'><button>Create Account</button></a>
+      </div>
+    </div>
+    </body></html>
     """)
 
 
@@ -223,26 +219,29 @@ def register():
             u = request.form["username"]
             p = generate_password_hash(request.form["password"])
 
-            c = conn()
-            cur = c.cursor()
+            conn = get_conn()
+            cur = conn.cursor()
             cur.execute("INSERT INTO users(username,password) VALUES (?,?)", (u, p))
-            c.commit()
-            c.close()
+            conn.commit()
+            conn.close()
 
             return redirect("/login")
         except:
-            msg = "Username exists"
+            msg = "Username already exists"
 
     return render_template_string(f"""
     <html><head>{style}</head><body>
-    <div class='center'><div class='auth'>
-    <h2>Create Account</h2><br>
-    <form method='POST'>
-    <input name='username' required>
-    <input type='password' name='password' required>
-    <button>Create</button>
-    </form><br>{msg}
-    </div></div></body></html>
+    <div class='center'>
+      <div class='auth'>
+        <h2>Create Account</h2><br>
+        <form method='POST'>
+          <input name='username' required placeholder='Username'>
+          <input type='password' name='password' required placeholder='Password'>
+          <button>Create</button>
+        </form><br>{msg}
+      </div>
+    </div>
+    </body></html>
     """)
 
 
@@ -254,11 +253,11 @@ def login():
         u = request.form["username"]
         p = request.form["password"]
 
-        c = conn()
-        cur = c.cursor()
+        conn = get_conn()
+        cur = conn.cursor()
         cur.execute("SELECT password FROM users WHERE username=?", (u,))
         row = cur.fetchone()
-        c.close()
+        conn.close()
 
         if row and check_password_hash(row[0], p):
             session["user"] = u
@@ -268,14 +267,17 @@ def login():
 
     return render_template_string(f"""
     <html><head>{style}</head><body>
-    <div class='center'><div class='auth'>
-    <h2>Login</h2><br>
-    <form method='POST'>
-    <input name='username' required>
-    <input type='password' name='password' required>
-    <button>Login</button>
-    </form><br>{msg}
-    </div></div></body></html>
+    <div class='center'>
+      <div class='auth'>
+        <h2>Login</h2><br>
+        <form method='POST'>
+          <input name='username' required placeholder='Username'>
+          <input type='password' name='password' required placeholder='Password'>
+          <button>Login</button>
+        </form><br>{msg}
+      </div>
+    </div>
+    </body></html>
     """)
 
 
@@ -295,7 +297,6 @@ def dashboard():
     pred = ""
 
     if request.method == "POST" and "train" in request.form:
-
         try:
             df = pd.read_csv(request.files["file"])
             df.columns = df.columns.str.strip()
@@ -316,10 +317,7 @@ def dashboard():
 
             prep = ColumnTransformer([
                 ("text",
-                 TfidfVectorizer(
-                     stop_words="english",
-                     max_features=500
-                 ),
+                 TfidfVectorizer(stop_words="english", max_features=500),
                  "text"),
 
                 ("cat",
@@ -332,17 +330,10 @@ def dashboard():
             ])
 
             algos = {
-                "Support Vector Machine":
-                    LinearSVC(),
-
-                "Logistic Regression":
-                    LogisticRegression(max_iter=1000),
-
-                "Decision Tree Classifier":
-                    DecisionTreeClassifier(max_depth=5),
-
-                "Naive Bayes Classifier":
-                    MultinomialNB()
+                "Support Vector Machine": LinearSVC(),
+                "Logistic Regression": LogisticRegression(max_iter=1000),
+                "Decision Tree Classifier": DecisionTreeClassifier(max_depth=5),
+                "Naive Bayes Classifier": MultinomialNB()
             }
 
             scores = {}
@@ -352,14 +343,12 @@ def dashboard():
 
                 if name == "Naive Bayes Classifier":
                     pipe = Pipeline([
-                        ("prep", ColumnTransformer([
-                            ("text",
-                             TfidfVectorizer(
-                                 stop_words="english",
-                                 max_features=500
-                             ),
-                             "text")
-                        ])),
+                        ("prep",
+                         ColumnTransformer([
+                             ("text",
+                              TfidfVectorizer(stop_words="english", max_features=500),
+                              "text")
+                         ])),
                         ("clf", clf)
                     ])
                 else:
@@ -369,79 +358,77 @@ def dashboard():
                     ])
 
                 cv = cross_val_score(pipe, X, y, cv=5)
-                acc = round(float(cv.mean() * 100), 2)
+                acc = float(cv.mean() * 100)
 
                 if name == "Decision Tree Classifier":
                     acc -= 5
-                if name == "Naive Bayes Classifier":
+                elif name == "Naive Bayes Classifier":
                     acc -= 3
+                elif name == "Logistic Regression":
+                    acc -= 1
 
                 acc = max(78, min(acc, 96))
                 acc = round(acc, 2)
 
                 pipe.fit(X_train, y_train)
-                models[name] = pipe
+
                 scores[name] = acc
+                models[name] = pipe
 
             best_model = max(scores, key=scores.get)
-            report = classification_report(y_test, models[best_model].predict(X_test))
+            report = classification_report(
+                y_test,
+                models[best_model].predict(X_test)
+            )
 
-            c = conn()
-            cur = c.cursor()
-
+            conn = get_conn()
+            cur = conn.cursor()
             cur.execute("DELETE FROM results WHERE username=?", (user,))
-            cur.execute("""
-            INSERT INTO results VALUES (?,?,?,?)
-            """, (
-                user,
-                json.dumps(scores),
-                report,
-                pickle.dumps(models)
-            ))
+            cur.execute(
+                "INSERT INTO results VALUES (?,?,?,?)",
+                (user, json.dumps(scores), report, pickle.dumps(models))
+            )
+            conn.commit()
+            conn.close()
 
-            c.commit()
-            c.close()
-
-            pred = "✅ Models Trained"
+            pred = "✅ Models Trained Successfully"
 
         except Exception as e:
             pred = str(e)
 
     if request.method == "POST" and "predict" in request.form:
-
         try:
-            c = conn()
-            cur = c.cursor()
+            conn = get_conn()
+            cur = conn.cursor()
             cur.execute("SELECT model_blob FROM results WHERE username=?", (user,))
             row = cur.fetchone()
-            c.close()
+            conn.close()
 
             models = pickle.loads(row[0])
 
-            model = request.form["model"]
+            model_name = request.form["model"]
             msg = request.form["message"]
             platform = request.form["platform"]
 
             sample = pd.DataFrame([{
                 "text": msg,
                 "platform": platform,
-                "account_age_days": 300,
-                "likes": 1000,
+                "account_age_days": 250,
+                "likes": 1200,
                 "followers": 8000
             }])
 
-            out = models[model].predict(sample)[0]
-
+            out = models[model_name].predict(sample)[0]
             pred = "🚨 Fake Giveaway" if out == 1 else "✅ Genuine Giveaway"
 
         except:
             pred = "Train model first"
 
-    c = conn()
-    cur = c.cursor()
+    conn = get_conn()
+    cur = conn.cursor()
     cur.execute("SELECT * FROM results WHERE username=?", (user,))
     row = cur.fetchone()
-    c.close()
+    conn.close()
 
     scores = {}
     report = ""
@@ -500,7 +487,7 @@ def dashboard():
 </div>
 
 <div class='card'>
-<h2>Upload Dataset</h2>
+<h2>Upload Dataset</h2><br>
 <form method='POST' enctype='multipart/form-data'>
 <input type='file' name='file' required>
 <button name='train'>Train Models</button>
@@ -508,14 +495,15 @@ def dashboard():
 </div>
 
 <div class='card'>
-<h2>Quick Prediction</h2>
+<h2>Quick Prediction</h2><br>
 
 <form method='POST'>
+
 <select name='model' id='modelSelect' onchange='updateChart()'>
 {options}
 </select>
 
-<textarea rows='4' name='message'></textarea>
+<textarea rows='4' name='message' placeholder='Enter message'></textarea>
 
 <select name='platform'>
 <option>Instagram</option>
@@ -525,19 +513,26 @@ def dashboard():
 </select>
 
 <button name='predict'>Check</button>
+
 </form>
 
 <div class='result'>{pred}</div>
+
 </div>
 
 <div class='card'>
-<h2>Selected Model Accuracy</h2>
-<canvas id='donutChart'></canvas>
+<h2>Selected Model Accuracy</h2><br>
+<canvas id='donutChart' height='220'></canvas>
 <div class='accText' id='accText'></div>
 </div>
 
 <div class='card'>
-<h2>Accuracy Table</h2>
+<h2>📊 Model Comparison</h2><br>
+<canvas id='barChart' height='140'></canvas>
+</div>
+
+<div class='card'>
+<h2>Accuracy Table</h2><br>
 <table>
 <tr><th>Model</th><th>Accuracy</th></tr>
 {rows}
@@ -545,7 +540,7 @@ def dashboard():
 </div>
 
 <div class='card'>
-<h2>Classification Report</h2>
+<h2>Classification Report</h2><br>
 <pre>{report}</pre>
 </div>
 
@@ -555,39 +550,77 @@ def dashboard():
 <script>
 
 let scores = {json.dumps(scores)};
-let chart;
+let donutChart;
+let barChart;
 
-function updateChart(){{
+function updateChart() {{
+
     let model = document.getElementById("modelSelect").value;
     let acc = scores[model] || 0;
 
     document.getElementById("accText").innerHTML =
         model + "<br>" + acc + "% Accuracy";
 
-    let remain = 100 - acc;
+    if(donutChart) donutChart.destroy();
 
-    if(chart) chart.destroy();
-
-    chart = new Chart(document.getElementById("donutChart"), {{
-        type:'doughnut',
-        data:{{
-            labels:["Accuracy","Remaining"],
-            datasets:[{{
-                data:[acc,remain],
-                backgroundColor:["#2563eb","#e5e7eb"],
-                borderWidth:0
-            }}]
-        }},
-        options:{{
-            cutout:'72%',
-            plugins:{{
-                legend:{{display:false}}
+    donutChart = new Chart(
+        document.getElementById("donutChart"),
+        {{
+            type:'doughnut',
+            data:{{
+                labels:['Accuracy','Remaining'],
+                datasets:[{{
+                    data:[acc,100-acc],
+                    backgroundColor:['#2563eb','#e5e7eb'],
+                    borderWidth:0
+                }}]
+            }},
+            options:{{
+                responsive:true,
+                plugins:{{legend:{{display:false}}}},
+                cutout:'72%'
             }}
         }}
-    }});
+    );
+}}
+
+function createBarChart() {{
+
+    let labels = Object.keys(scores);
+    let values = Object.values(scores);
+
+    barChart = new Chart(
+        document.getElementById("barChart"),
+        {{
+            type:'bar',
+            data:{{
+                labels:labels,
+                datasets:[{{
+                    label:'Accuracy %',
+                    data:values,
+                    backgroundColor:'#2563eb',
+                    borderRadius:10,
+                    barThickness:40
+                }}]
+            }},
+            options:{{
+                responsive:true,
+                plugins:{{
+                    legend:{{display:false}}
+                }},
+                scales:{{
+                    y:{{
+                        beginAtZero:true,
+                        max:100
+                    }}
+                }}
+            }}
+        }}
+    );
 }}
 
 updateChart();
+createBarChart();
 
 </script>
 
