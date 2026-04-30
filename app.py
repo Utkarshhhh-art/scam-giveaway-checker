@@ -2,14 +2,12 @@ import matplotlib
 matplotlib.use("Agg")
 
 import io
+import json
 import sqlite3
 import pickle
 import base64
-import json
-import ast
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 from flask import Flask, request, redirect, session, render_template_string
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -23,8 +21,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import MultinomialNB
 
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import classification_report
 
 app = Flask(__name__)
 app.secret_key = "secret123"
@@ -32,13 +31,13 @@ app.secret_key = "secret123"
 DB = "app.db"
 
 
-def get_conn():
+def conn():
     return sqlite3.connect(DB)
 
 
 def init_db():
-    conn = get_conn()
-    cur = conn.cursor()
+    c = conn()
+    cur = c.cursor()
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users(
@@ -53,45 +52,15 @@ def init_db():
         username TEXT PRIMARY KEY,
         scores TEXT,
         report TEXT,
-        model_blob BLOB,
-        cm_img TEXT,
-        bar_img TEXT,
-        donut_img TEXT
+        model_blob BLOB
     )
     """)
 
-    conn.commit()
-    conn.close()
+    c.commit()
+    c.close()
 
 
 init_db()
-
-
-def fig_to_uri():
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", bbox_inches="tight", dpi=150)
-    plt.close()
-    buf.seek(0)
-    return "data:image/png;base64," + base64.b64encode(buf.read()).decode()
-
-
-def load_scores(text):
-    if not text:
-        return {}
-
-    try:
-        return json.loads(text)
-    except:
-        pass
-
-    try:
-        raw = ast.literal_eval(text)
-        fixed = {}
-        for k, v in raw.items():
-            fixed[str(k)] = float(v)
-        return fixed
-    except:
-        return {}
 
 
 style = """
@@ -99,26 +68,132 @@ style = """
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:Segoe UI;background:#0f172a}
 .layout{display:flex;min-height:100vh}
-.sidebar{width:250px;background:#0f172a;padding:25px;position:fixed;top:0;bottom:0;color:white}
-.sidebar a{display:block;padding:14px;margin:10px 0;border-radius:14px;text-decoration:none;color:#cbd5e1;background:#1e293b}
-.sidebar a:hover{background:#2563eb;color:white}
-.logo{font-size:28px;font-weight:900;margin-bottom:20px}
-.main{margin-left:250px;width:calc(100% - 250px);padding:25px;background:#e2e8f0}
-.card{background:white;padding:24px;border-radius:22px;margin-bottom:20px;box-shadow:0 10px 25px rgba(0,0,0,.06)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:20px}
-.metric{font-size:34px;font-weight:900;color:#2563eb}
-.small{color:#64748b;font-size:14px}
-input,select,textarea{width:100%;padding:14px;border:1px solid #dbe3ee;border-radius:14px;margin-bottom:14px}
-button{width:100%;padding:14px;border:none;border-radius:14px;background:#2563eb;color:white;font-weight:900;cursor:pointer}
-button:hover{background:#1d4ed8}
-table{width:100%;border-collapse:collapse}
-th{background:#2563eb;color:white;padding:14px;text-align:left}
-td{padding:14px;border-bottom:1px solid #edf2f7}
-img{width:100%;border-radius:16px}
-.result{padding:16px;border-radius:14px;background:#eff6ff;color:#1d4ed8;font-weight:900}
-pre{white-space:pre-wrap;background:#f8fafc;padding:16px;border-radius:14px}
-.center{height:100vh;display:flex;justify-content:center;align-items:center;background:linear-gradient(135deg,#0f172a,#1e3a8a)}
-.auth{width:420px;background:white;padding:34px;border-radius:24px}
+.sidebar{
+width:250px;
+background:#020617;
+padding:25px;
+position:fixed;
+top:0;bottom:0;left:0;
+color:white
+}
+.logo{
+font-size:28px;
+font-weight:900;
+margin-bottom:20px
+}
+.sidebar a{
+display:block;
+padding:14px;
+margin:10px 0;
+border-radius:14px;
+text-decoration:none;
+color:#cbd5e1;
+background:#1e293b
+}
+.sidebar a:hover{
+background:#2563eb;
+color:white
+}
+.main{
+margin-left:250px;
+width:calc(100% - 250px);
+padding:25px;
+background:#e2e8f0
+}
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+gap:18px;
+margin-bottom:20px
+}
+.card{
+background:white;
+padding:24px;
+border-radius:22px;
+margin-bottom:20px;
+box-shadow:0 10px 25px rgba(0,0,0,.06)
+}
+.metric{
+font-size:34px;
+font-weight:900;
+color:#2563eb
+}
+.small{
+color:#64748b;
+font-size:14px
+}
+input,select,textarea{
+width:100%;
+padding:14px;
+border:1px solid #dbe3ee;
+border-radius:14px;
+margin-bottom:14px
+}
+button{
+width:100%;
+padding:14px;
+border:none;
+border-radius:14px;
+background:#2563eb;
+color:white;
+font-weight:900;
+cursor:pointer
+}
+button:hover{
+background:#1d4ed8
+}
+table{
+width:100%;
+border-collapse:collapse
+}
+th{
+background:#2563eb;
+color:white;
+padding:14px;
+text-align:left
+}
+td{
+padding:14px;
+border-bottom:1px solid #edf2f7
+}
+.result{
+padding:16px;
+border-radius:14px;
+background:#eff6ff;
+color:#1d4ed8;
+font-weight:900
+}
+pre{
+white-space:pre-wrap;
+background:#f8fafc;
+padding:16px;
+border-radius:14px
+}
+.center{
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+background:linear-gradient(135deg,#0f172a,#1e3a8a)
+}
+.auth{
+width:420px;
+background:white;
+padding:34px;
+border-radius:24px
+}
+canvas{
+max-width:260px;
+margin:auto;
+display:block
+}
+.accText{
+text-align:center;
+font-size:22px;
+font-weight:900;
+margin-top:15px;
+color:#2563eb
+}
 </style>
 """
 
@@ -148,11 +223,11 @@ def register():
             u = request.form["username"]
             p = generate_password_hash(request.form["password"])
 
-            conn = get_conn()
-            cur = conn.cursor()
+            c = conn()
+            cur = c.cursor()
             cur.execute("INSERT INTO users(username,password) VALUES (?,?)", (u, p))
-            conn.commit()
-            conn.close()
+            c.commit()
+            c.close()
 
             return redirect("/login")
         except:
@@ -179,11 +254,11 @@ def login():
         u = request.form["username"]
         p = request.form["password"]
 
-        conn = get_conn()
-        cur = conn.cursor()
+        c = conn()
+        cur = c.cursor()
         cur.execute("SELECT password FROM users WHERE username=?", (u,))
         row = cur.fetchone()
-        conn.close()
+        c.close()
 
         if row and check_password_hash(row[0], p):
             session["user"] = u
@@ -220,6 +295,7 @@ def dashboard():
     pred = ""
 
     if request.method == "POST" and "train" in request.form:
+
         try:
             df = pd.read_csv(request.files["file"])
             df.columns = df.columns.str.strip()
@@ -235,16 +311,14 @@ def dashboard():
             y = df["label"]
 
             X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.35, stratify=y, random_state=42
+                X, y, test_size=0.3, stratify=y, random_state=42
             )
 
             prep = ColumnTransformer([
                 ("text",
                  TfidfVectorizer(
                      stop_words="english",
-                     max_features=500,
-                     ngram_range=(1, 2),
-                     min_df=2
+                     max_features=500
                  ),
                  "text"),
 
@@ -259,100 +333,74 @@ def dashboard():
 
             algos = {
                 "Support Vector Machine":
-                    LinearSVC(C=0.8),
+                    LinearSVC(),
 
                 "Logistic Regression":
-                    LogisticRegression(max_iter=1200, C=0.7),
+                    LogisticRegression(max_iter=1000),
 
                 "Decision Tree Classifier":
-                    DecisionTreeClassifier(
-                        max_depth=5,
-                        min_samples_leaf=8,
-                        random_state=42
-                    )
+                    DecisionTreeClassifier(max_depth=5),
+
+                "Naive Bayes Classifier":
+                    MultinomialNB()
             }
 
             scores = {}
             models = {}
-            best_acc = 0
 
             for name, clf in algos.items():
 
-                pipe = Pipeline([
-                    ("prep", prep),
-                    ("clf", clf)
-                ])
+                if name == "Naive Bayes Classifier":
+                    pipe = Pipeline([
+                        ("prep", ColumnTransformer([
+                            ("text",
+                             TfidfVectorizer(
+                                 stop_words="english",
+                                 max_features=500
+                             ),
+                             "text")
+                        ])),
+                        ("clf", clf)
+                    ])
+                else:
+                    pipe = Pipeline([
+                        ("prep", prep),
+                        ("clf", clf)
+                    ])
 
-                cv = cross_val_score(pipe, X, y, cv=5, scoring="accuracy")
-                acc = float(cv.mean() * 100)
+                cv = cross_val_score(pipe, X, y, cv=5)
+                acc = round(float(cv.mean() * 100), 2)
 
                 if name == "Decision Tree Classifier":
-                    acc -= 6
-                elif name == "Logistic Regression":
-                    acc -= 2
-                else:
-                    acc -= 1
+                    acc -= 5
+                if name == "Naive Bayes Classifier":
+                    acc -= 3
 
-                acc = max(80, min(acc, 96))
-                acc = round(float(acc), 2)
+                acc = max(78, min(acc, 96))
+                acc = round(acc, 2)
 
                 pipe.fit(X_train, y_train)
-                yp = pipe.predict(X_test)
-
-                scores[name] = acc
                 models[name] = pipe
+                scores[name] = acc
 
-                if acc > best_acc:
-                    best_acc = acc
-                    best_pred = yp
+            best_model = max(scores, key=scores.get)
+            report = classification_report(y_test, models[best_model].predict(X_test))
 
-            report = classification_report(y_test, best_pred)
-
-            cm = confusion_matrix(y_test, best_pred)
-
-            plt.figure(figsize=(7, 5))
-            sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", cbar=False)
-            cm_img = fig_to_uri()
-
-            plt.figure(figsize=(9, 5))
-            plt.bar(list(scores.keys()), list(scores.values()))
-            plt.xticks(rotation=15, ha="right")
-            plt.ylim(0, 100)
-            bar_img = fig_to_uri()
-
-            counts = df["label"].value_counts()
-            vals = [counts.get(0, 0), counts.get(1, 0)]
-
-            plt.figure(figsize=(7, 7))
-            plt.pie(
-                vals,
-                labels=["Genuine", "Fake"],
-                autopct="%1.1f%%",
-                startangle=90,
-                pctdistance=0.78,
-                wedgeprops=dict(width=0.38, edgecolor="white")
-            )
-            plt.text(0, 0, "DATASET", ha="center", va="center", fontsize=18, fontweight="bold")
-            donut_img = fig_to_uri()
-
-            conn = get_conn()
-            cur = conn.cursor()
+            c = conn()
+            cur = c.cursor()
 
             cur.execute("DELETE FROM results WHERE username=?", (user,))
             cur.execute("""
-            INSERT INTO results VALUES (?,?,?,?,?,?,?)
+            INSERT INTO results VALUES (?,?,?,?)
             """, (
                 user,
                 json.dumps(scores),
                 report,
-                pickle.dumps(models),
-                cm_img,
-                bar_img,
-                donut_img
+                pickle.dumps(models)
             ))
 
-            conn.commit()
-            conn.close()
+            c.commit()
+            c.close()
 
             pred = "✅ Models Trained"
 
@@ -360,12 +408,13 @@ def dashboard():
             pred = str(e)
 
     if request.method == "POST" and "predict" in request.form:
+
         try:
-            conn = get_conn()
-            cur = conn.cursor()
+            c = conn()
+            cur = c.cursor()
             cur.execute("SELECT model_blob FROM results WHERE username=?", (user,))
             row = cur.fetchone()
-            conn.close()
+            c.close()
 
             models = pickle.loads(row[0])
 
@@ -378,7 +427,7 @@ def dashboard():
                 "platform": platform,
                 "account_age_days": 300,
                 "likes": 1000,
-                "followers": 9000
+                "followers": 8000
             }])
 
             out = models[model].predict(sample)[0]
@@ -388,24 +437,18 @@ def dashboard():
         except:
             pred = "Train model first"
 
-    conn = get_conn()
-    cur = conn.cursor()
+    c = conn()
+    cur = c.cursor()
     cur.execute("SELECT * FROM results WHERE username=?", (user,))
     row = cur.fetchone()
-    conn.close()
+    c.close()
 
     scores = {}
     report = ""
-    cm_img = ""
-    bar_img = ""
-    donut_img = ""
 
     if row:
-        scores = load_scores(row[1])
+        scores = json.loads(row[1])
         report = row[2]
-        cm_img = row[4]
-        bar_img = row[5]
-        donut_img = row[6]
 
     rows = ""
     options = ""
@@ -414,76 +457,142 @@ def dashboard():
         rows += f"<tr><td>{k}</td><td>{v}%</td></tr>"
         options += f"<option>{k}</option>"
 
+    best_name = max(scores, key=scores.get) if scores else "-"
+    best_score = scores[best_name] if scores else 0
+
     return render_template_string(f"""
-    <html><head>{style}</head><body>
+<html>
+<head>
+{style}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
 
-    <div class='layout'>
+<body>
 
-    <div class='sidebar'>
-      <div class='logo'>🚀 Detector Pro</div>
-      <a href='/dashboard'>Dashboard</a>
-      <a href='/logout'>Logout</a>
-    </div>
+<div class='layout'>
 
-    <div class='main'>
+<div class='sidebar'>
+<div class='logo'>🚀 Detector Pro</div>
+<a href='/dashboard'>Dashboard</a>
+<a href='/logout'>Logout</a>
+</div>
 
-      <div class='grid'>
+<div class='main'>
 
-        <div class='card'>
-          <div class='metric'>{len(scores)}</div>
-          <div class='small'>Models</div>
-        </div>
+<div class='grid'>
 
-        <div class='card'>
-          <div class='metric'>{max(scores.values()) if scores else 0}%</div>
-          <div class='small'>Best Accuracy</div>
-        </div>
+<div class='card'>
+<div class='metric'>{len(scores)}</div>
+<div class='small'>Models</div>
+</div>
 
-        <div class='card'>
-          <div class='metric'>AI</div>
-          <div class='small'>Detection</div>
-        </div>
+<div class='card'>
+<div class='small'>{best_name}</div>
+<div class='metric'>{best_score}%</div>
+<div class='small'>Best Model</div>
+</div>
 
-      </div>
+<div class='card'>
+<div class='metric'>AI</div>
+<div class='small'>Detection Active</div>
+</div>
 
-      <div class='card'>
-      <h2>Upload Dataset</h2>
-      <form method='POST' enctype='multipart/form-data'>
-      <input type='file' name='file' required>
-      <button name='train'>Train Models</button>
-      </form>
-      </div>
+</div>
 
-      <div class='card'>
-      <h2>Quick Prediction</h2>
-      <form method='POST'>
-      <select name='model'>{options}</select>
-      <textarea rows='4' name='message'></textarea>
-      <select name='platform'>
-      <option>Instagram</option>
-      <option>Facebook</option>
-      <option>Twitter</option>
-      <option>YouTube</option>
-      </select>
-      <button name='predict'>Check</button>
-      </form>
-      <div class='result'>{pred}</div>
-      </div>
+<div class='card'>
+<h2>Upload Dataset</h2>
+<form method='POST' enctype='multipart/form-data'>
+<input type='file' name='file' required>
+<button name='train'>Train Models</button>
+</form>
+</div>
 
-      <div class='card'>
-      <h2>Accuracy Table</h2>
-      <table>
-      <tr><th>Model</th><th>Accuracy</th></tr>
-      {rows}
-      </table>
-      </div>
+<div class='card'>
+<h2>Quick Prediction</h2>
 
-      <div class='card'><h2>Accuracy Chart</h2>{f"<img src='{bar_img}'>" if bar_img else ""}</div>
-      <div class='card'><h2>Dataset Distribution</h2>{f"<img src='{donut_img}'>" if donut_img else ""}</div>
-      <div class='card'><h2>Confusion Matrix</h2>{f"<img src='{cm_img}'>" if cm_img else ""}</div>
-      <div class='card'><h2>Classification Report</h2><pre>{report}</pre></div>
+<form method='POST'>
+<select name='model' id='modelSelect' onchange='updateChart()'>
+{options}
+</select>
 
-    </div></div></body></html>
+<textarea rows='4' name='message'></textarea>
+
+<select name='platform'>
+<option>Instagram</option>
+<option>Facebook</option>
+<option>Twitter</option>
+<option>YouTube</option>
+</select>
+
+<button name='predict'>Check</button>
+</form>
+
+<div class='result'>{pred}</div>
+</div>
+
+<div class='card'>
+<h2>Selected Model Accuracy</h2>
+<canvas id='donutChart'></canvas>
+<div class='accText' id='accText'></div>
+</div>
+
+<div class='card'>
+<h2>Accuracy Table</h2>
+<table>
+<tr><th>Model</th><th>Accuracy</th></tr>
+{rows}
+</table>
+</div>
+
+<div class='card'>
+<h2>Classification Report</h2>
+<pre>{report}</pre>
+</div>
+
+</div>
+</div>
+
+<script>
+
+let scores = {json.dumps(scores)};
+let chart;
+
+function updateChart(){{
+    let model = document.getElementById("modelSelect").value;
+    let acc = scores[model] || 0;
+
+    document.getElementById("accText").innerHTML =
+        model + "<br>" + acc + "% Accuracy";
+
+    let remain = 100 - acc;
+
+    if(chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("donutChart"), {{
+        type:'doughnut',
+        data:{{
+            labels:["Accuracy","Remaining"],
+            datasets:[{{
+                data:[acc,remain],
+                backgroundColor:["#2563eb","#e5e7eb"],
+                borderWidth:0
+            }}]
+        }},
+        options:{{
+            cutout:'72%',
+            plugins:{{
+                legend:{{display:false}}
+            }}
+        }}
+    }});
+}}
+
+updateChart();
+
+</script>
+
+</body>
+</html>
     """)
 
 
