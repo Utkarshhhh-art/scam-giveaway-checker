@@ -27,12 +27,12 @@ app.secret_key = "secret123"
 DB = "app.db"
 
 
-def get_conn():
+def db():
     return sqlite3.connect(DB)
 
 
-def init_db():
-    conn = get_conn()
+def init():
+    conn = db()
     cur = conn.cursor()
 
     cur.execute("""
@@ -56,7 +56,7 @@ def init_db():
     conn.close()
 
 
-init_db()
+init()
 
 style = """
 <style>
@@ -64,129 +64,65 @@ style = """
 body{font-family:Segoe UI;background:#0f172a}
 .layout{display:flex;min-height:100vh}
 .sidebar{
-width:250px;
-background:#020617;
-padding:25px;
-position:fixed;
-top:0;bottom:0;left:0;
-color:white
+width:250px;background:#020617;padding:25px;
+position:fixed;top:0;bottom:0;left:0;color:white
 }
-.logo{
-font-size:28px;
-font-weight:900;
-margin-bottom:25px
-}
+.logo{font-size:28px;font-weight:900;margin-bottom:25px}
 .sidebar a{
-display:block;
-padding:14px;
-margin:10px 0;
-border-radius:14px;
-text-decoration:none;
-color:#cbd5e1;
-background:#1e293b
+display:block;padding:14px;margin:10px 0;border-radius:14px;
+text-decoration:none;color:#cbd5e1;background:#1e293b
 }
-.sidebar a:hover{
-background:#2563eb;
-color:white
-}
+.sidebar a:hover{background:#2563eb;color:white}
 .main{
-margin-left:250px;
-width:calc(100% - 250px);
-padding:25px;
-background:#e2e8f0
+margin-left:250px;width:calc(100% - 250px);
+padding:25px;background:#e2e8f0
 }
 .grid{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-gap:18px;
-margin-bottom:20px
+gap:18px;margin-bottom:20px
 }
 .card{
-background:white;
-padding:24px;
-border-radius:22px;
-margin-bottom:20px;
-box-shadow:0 10px 25px rgba(0,0,0,.06)
+background:white;padding:24px;border-radius:22px;
+margin-bottom:20px;box-shadow:0 10px 25px rgba(0,0,0,.06)
 }
-.metric{
-font-size:34px;
-font-weight:900;
-color:#2563eb
-}
-.small{
-font-size:14px;
-color:#64748b
-}
+.metric{font-size:34px;font-weight:900;color:#2563eb}
+.small{font-size:14px;color:#64748b}
 input,select,textarea{
-width:100%;
-padding:14px;
-border:1px solid #dbe3ee;
-border-radius:14px;
-margin-bottom:14px
+width:100%;padding:14px;border:1px solid #dbe3ee;
+border-radius:14px;margin-bottom:14px
 }
 button{
-width:100%;
-padding:14px;
-border:none;
-border-radius:14px;
-background:#2563eb;
-color:white;
-font-weight:900;
-cursor:pointer
+width:100%;padding:14px;border:none;border-radius:14px;
+background:#2563eb;color:white;font-weight:900;cursor:pointer
 }
-button:hover{
-background:#1d4ed8
-}
+button:hover{background:#1d4ed8}
 .result{
-padding:15px;
-border-radius:14px;
-background:#eff6ff;
-color:#1d4ed8;
-font-weight:900
+padding:15px;border-radius:14px;background:#eff6ff;
+color:#1d4ed8;font-weight:900
 }
-table{
-width:100%;
-border-collapse:collapse
-}
+table{width:100%;border-collapse:collapse}
 th{
-background:#2563eb;
-color:white;
-padding:14px;
-text-align:left
+background:#2563eb;color:white;padding:14px;text-align:left
 }
 td{
-padding:14px;
-border-bottom:1px solid #edf2f7
+padding:14px;border-bottom:1px solid #edf2f7
 }
 pre{
-white-space:pre-wrap;
-background:#f8fafc;
-padding:16px;
-border-radius:14px
+white-space:pre-wrap;background:#f8fafc;
+padding:16px;border-radius:14px
 }
 .center{
-height:100vh;
-display:flex;
-justify-content:center;
+height:100vh;display:flex;justify-content:center;
 align-items:center;
 background:linear-gradient(135deg,#0f172a,#1e3a8a)
 }
 .auth{
-width:420px;
-background:white;
-padding:34px;
-border-radius:24px
-}
-canvas{
-max-width:100%;
-margin:auto
+width:420px;background:white;padding:34px;border-radius:24px
 }
 .accText{
-text-align:center;
-font-size:22px;
-font-weight:900;
-margin-top:15px;
-color:#2563eb
+text-align:center;font-size:22px;
+font-weight:900;margin-top:15px;color:#2563eb
 }
 </style>
 """
@@ -198,16 +134,16 @@ def home():
         return redirect("/dashboard")
 
     return render_template_string(f"""
-    <html><head>{style}</head><body>
-    <div class='center'>
-      <div class='auth'>
-        <h1>🚀 Detector Pro</h1><br>
-        <a href='/login'><button>Login</button></a><br><br>
-        <a href='/register'><button>Create Account</button></a>
-      </div>
-    </div>
-    </body></html>
-    """)
+<html><head>{style}</head><body>
+<div class='center'>
+<div class='auth'>
+<h1>🚀 Detector Pro</h1><br>
+<a href='/login'><button>Login</button></a><br><br>
+<a href='/register'><button>Create Account</button></a>
+</div>
+</div>
+</body></html>
+""")
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -219,9 +155,12 @@ def register():
             u = request.form["username"]
             p = generate_password_hash(request.form["password"])
 
-            conn = get_conn()
+            conn = db()
             cur = conn.cursor()
-            cur.execute("INSERT INTO users(username,password) VALUES (?,?)", (u, p))
+            cur.execute(
+                "INSERT INTO users(username,password) VALUES (?,?)",
+                (u, p)
+            )
             conn.commit()
             conn.close()
 
@@ -230,19 +169,19 @@ def register():
             msg = "Username already exists"
 
     return render_template_string(f"""
-    <html><head>{style}</head><body>
-    <div class='center'>
-      <div class='auth'>
-        <h2>Create Account</h2><br>
-        <form method='POST'>
-          <input name='username' required placeholder='Username'>
-          <input type='password' name='password' required placeholder='Password'>
-          <button>Create</button>
-        </form><br>{msg}
-      </div>
-    </div>
-    </body></html>
-    """)
+<html><head>{style}</head><body>
+<div class='center'>
+<div class='auth'>
+<h2>Create Account</h2><br>
+<form method='POST'>
+<input name='username' required placeholder='Username'>
+<input type='password' name='password' required placeholder='Password'>
+<button>Create</button>
+</form><br>{msg}
+</div>
+</div>
+</body></html>
+""")
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -253,9 +192,12 @@ def login():
         u = request.form["username"]
         p = request.form["password"]
 
-        conn = get_conn()
+        conn = db()
         cur = conn.cursor()
-        cur.execute("SELECT password FROM users WHERE username=?", (u,))
+        cur.execute(
+            "SELECT password FROM users WHERE username=?",
+            (u,)
+        )
         row = cur.fetchone()
         conn.close()
 
@@ -266,19 +208,19 @@ def login():
             msg = "Invalid Login"
 
     return render_template_string(f"""
-    <html><head>{style}</head><body>
-    <div class='center'>
-      <div class='auth'>
-        <h2>Login</h2><br>
-        <form method='POST'>
-          <input name='username' required placeholder='Username'>
-          <input type='password' name='password' required placeholder='Password'>
-          <button>Login</button>
-        </form><br>{msg}
-      </div>
-    </div>
-    </body></html>
-    """)
+<html><head>{style}</head><body>
+<div class='center'>
+<div class='auth'>
+<h2>Login</h2><br>
+<form method='POST'>
+<input name='username' required placeholder='Username'>
+<input type='password' name='password' required placeholder='Password'>
+<button>Login</button>
+</form><br>{msg}
+</div>
+</div>
+</body></html>
+""")
 
 
 @app.route("/logout")
@@ -297,6 +239,7 @@ def dashboard():
     pred = ""
 
     if request.method == "POST" and "train" in request.form:
+
         try:
             df = pd.read_csv(request.files["file"])
             df.columns = df.columns.str.strip()
@@ -312,12 +255,18 @@ def dashboard():
             y = df["label"]
 
             X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.3, stratify=y, random_state=42
+                X, y,
+                test_size=0.30,
+                stratify=y,
+                random_state=42
             )
 
             prep = ColumnTransformer([
                 ("text",
-                 TfidfVectorizer(stop_words="english", max_features=500),
+                 TfidfVectorizer(
+                     stop_words="english",
+                     max_features=500
+                 ),
                  "text"),
 
                 ("cat",
@@ -342,16 +291,22 @@ def dashboard():
             for name, clf in algos.items():
 
                 if name == "Naive Bayes Classifier":
+
                     pipe = Pipeline([
                         ("prep",
                          ColumnTransformer([
                              ("text",
-                              TfidfVectorizer(stop_words="english", max_features=500),
+                              TfidfVectorizer(
+                                  stop_words="english",
+                                  max_features=500
+                              ),
                               "text")
                          ])),
                         ("clf", clf)
                     ])
+
                 else:
+
                     pipe = Pipeline([
                         ("prep", prep),
                         ("clf", clf)
@@ -367,27 +322,38 @@ def dashboard():
                 elif name == "Logistic Regression":
                     acc -= 1
 
-                acc = max(78, min(acc, 96))
-                acc = round(acc, 2)
+                acc = round(max(78, min(acc, 96)), 2)
 
                 pipe.fit(X_train, y_train)
 
                 scores[name] = acc
                 models[name] = pipe
 
-            best_model = max(scores, key=scores.get)
+            best = max(scores, key=scores.get)
+
             report = classification_report(
                 y_test,
-                models[best_model].predict(X_test)
+                models[best].predict(X_test)
             )
 
-            conn = get_conn()
+            conn = db()
             cur = conn.cursor()
-            cur.execute("DELETE FROM results WHERE username=?", (user,))
+
+            cur.execute(
+                "DELETE FROM results WHERE username=?",
+                (user,)
+            )
+
             cur.execute(
                 "INSERT INTO results VALUES (?,?,?,?)",
-                (user, json.dumps(scores), report, pickle.dumps(models))
+                (
+                    user,
+                    json.dumps(scores),
+                    report,
+                    pickle.dumps(models)
+                )
             )
+
             conn.commit()
             conn.close()
 
@@ -397,16 +363,20 @@ def dashboard():
             pred = str(e)
 
     if request.method == "POST" and "predict" in request.form:
+
         try:
-            conn = get_conn()
+            conn = db()
             cur = conn.cursor()
-            cur.execute("SELECT model_blob FROM results WHERE username=?", (user,))
+            cur.execute(
+                "SELECT model_blob FROM results WHERE username=?",
+                (user,)
+            )
             row = cur.fetchone()
             conn.close()
 
             models = pickle.loads(row[0])
 
-            model_name = request.form["model"]
+            model = request.form["model"]
             msg = request.form["message"]
             platform = request.form["platform"]
 
@@ -418,15 +388,19 @@ def dashboard():
                 "followers": 8000
             }])
 
-            out = models[model_name].predict(sample)[0]
+            out = models[model].predict(sample)[0]
+
             pred = "🚨 Fake Giveaway" if out == 1 else "✅ Genuine Giveaway"
 
         except:
             pred = "Train model first"
 
-    conn = get_conn()
+    conn = db()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM results WHERE username=?", (user,))
+    cur.execute(
+        "SELECT * FROM results WHERE username=?",
+        (user,)
+    )
     row = cur.fetchone()
     conn.close()
 
@@ -503,7 +477,8 @@ def dashboard():
 {options}
 </select>
 
-<textarea rows='4' name='message' placeholder='Enter message'></textarea>
+<textarea rows='4' name='message'
+placeholder='Enter message'></textarea>
 
 <select name='platform'>
 <option>Instagram</option>
@@ -522,13 +497,22 @@ def dashboard():
 
 <div class='card'>
 <h2>Selected Model Accuracy</h2><br>
-<canvas id='donutChart' height='220'></canvas>
+<div style="height:320px">
+<canvas id='donutChart'></canvas>
+</div>
 <div class='accText' id='accText'></div>
 </div>
 
 <div class='card'>
-<h2>📊 Model Comparison</h2><br>
-<canvas id='barChart' height='140'></canvas>
+<h2 style="margin-bottom:18px;">📊 Model Comparison</h2>
+
+<div style="
+height:420px;
+padding:10px 5px 0 5px;
+">
+<canvas id='barChart'></canvas>
+</div>
+
 </div>
 
 <div class='card'>
@@ -577,6 +561,7 @@ function updateChart() {{
             }},
             options:{{
                 responsive:true,
+                maintainAspectRatio:false,
                 plugins:{{legend:{{display:false}}}},
                 cutout:'72%'
             }}
@@ -589,6 +574,8 @@ function createBarChart() {{
     let labels = Object.keys(scores);
     let values = Object.values(scores);
 
+    if(barChart) barChart.destroy();
+
     barChart = new Chart(
         document.getElementById("barChart"),
         {{
@@ -598,20 +585,49 @@ function createBarChart() {{
                 datasets:[{{
                     label:'Accuracy %',
                     data:values,
-                    backgroundColor:'#2563eb',
-                    borderRadius:10,
-                    barThickness:40
+                    backgroundColor:[
+                        '#2563eb',
+                        '#16a34a',
+                        '#f59e0b',
+                        '#ef4444'
+                    ],
+                    borderRadius:12,
+                    barThickness:55
                 }}]
             }},
             options:{{
                 responsive:true,
+                maintainAspectRatio:false,
+
                 plugins:{{
-                    legend:{{display:false}}
+                    legend:{{display:false}},
+                    tooltip:{{
+                        backgroundColor:'#111827',
+                        padding:12
+                    }}
                 }},
+
                 scales:{{
+                    x:{{
+                        ticks:{{
+                            font:{{
+                                size:13,
+                                weight:'bold'
+                            }}
+                        }},
+                        grid:{{display:false}}
+                    }},
+
                     y:{{
                         beginAtZero:true,
-                        max:100
+                        max:100,
+                        ticks:{{
+                            stepSize:10,
+                            font:{{size:12}}
+                        }},
+                        grid:{{
+                            color:'#e5e7eb'
+                        }}
                     }}
                 }}
             }}
@@ -626,7 +642,7 @@ createBarChart();
 
 </body>
 </html>
-    """)
+""")
 
 
 if __name__ == "__main__":
