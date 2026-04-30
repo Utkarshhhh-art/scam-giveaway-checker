@@ -61,68 +61,138 @@ init()
 style = """
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Segoe UI;background:#0f172a}
+body{
+font-family:Segoe UI,Arial,sans-serif;
+background:#0f172a
+}
 .layout{display:flex;min-height:100vh}
 .sidebar{
-width:250px;background:#020617;padding:25px;
-position:fixed;top:0;bottom:0;left:0;color:white
+width:250px;
+background:#020617;
+padding:25px;
+position:fixed;
+top:0;left:0;bottom:0;
+color:white
 }
-.logo{font-size:28px;font-weight:900;margin-bottom:25px}
+.logo{
+font-size:28px;
+font-weight:900;
+margin-bottom:30px
+}
 .sidebar a{
-display:block;padding:14px;margin:10px 0;border-radius:14px;
-text-decoration:none;color:#cbd5e1;background:#1e293b
+display:block;
+padding:14px;
+margin:10px 0;
+border-radius:14px;
+text-decoration:none;
+color:#cbd5e1;
+background:#1e293b
 }
-.sidebar a:hover{background:#2563eb;color:white}
+.sidebar a:hover{
+background:#2563eb;
+color:white
+}
 .main{
-margin-left:250px;width:calc(100% - 250px);
-padding:25px;background:#e2e8f0
+margin-left:250px;
+width:calc(100% - 250px);
+padding:28px;
+background:#e2e8f0
 }
 .grid{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-gap:18px;margin-bottom:20px
+gap:18px;
+margin-bottom:20px
 }
 .card{
-background:white;padding:24px;border-radius:22px;
-margin-bottom:20px;box-shadow:0 10px 25px rgba(0,0,0,.06)
+background:white;
+padding:24px;
+border-radius:24px;
+box-shadow:0 10px 30px rgba(0,0,0,.06);
+margin-bottom:20px
 }
-.metric{font-size:34px;font-weight:900;color:#2563eb}
-.small{font-size:14px;color:#64748b}
+.metric{
+font-size:34px;
+font-weight:900;
+color:#2563eb
+}
+.small{
+font-size:14px;
+color:#64748b;
+margin-top:6px
+}
 input,select,textarea{
-width:100%;padding:14px;border:1px solid #dbe3ee;
-border-radius:14px;margin-bottom:14px
+width:100%;
+padding:14px;
+border:1px solid #dbe3ee;
+border-radius:14px;
+margin-bottom:14px;
+font-size:15px
 }
 button{
-width:100%;padding:14px;border:none;border-radius:14px;
-background:#2563eb;color:white;font-weight:900;cursor:pointer
+width:100%;
+padding:14px;
+border:none;
+border-radius:14px;
+background:#2563eb;
+color:white;
+font-weight:900;
+cursor:pointer
 }
-button:hover{background:#1d4ed8}
+button:hover{
+background:#1d4ed8
+}
 .result{
-padding:15px;border-radius:14px;background:#eff6ff;
-color:#1d4ed8;font-weight:900
+padding:14px;
+border-radius:14px;
+background:#eff6ff;
+color:#1d4ed8;
+font-weight:900;
+margin-top:10px
 }
-table{width:100%;border-collapse:collapse}
+table{
+width:100%;
+border-collapse:collapse
+}
 th{
-background:#2563eb;color:white;padding:14px;text-align:left
+background:#2563eb;
+color:white;
+padding:14px;
+text-align:left
 }
 td{
-padding:14px;border-bottom:1px solid #edf2f7
+padding:14px;
+border-bottom:1px solid #edf2f7
 }
 pre{
-white-space:pre-wrap;background:#f8fafc;
-padding:16px;border-radius:14px
+white-space:pre-wrap;
+background:#f8fafc;
+padding:18px;
+border-radius:14px
 }
 .center{
-height:100vh;display:flex;justify-content:center;
+height:100vh;
+display:flex;
+justify-content:center;
 align-items:center;
 background:linear-gradient(135deg,#0f172a,#1e3a8a)
 }
 .auth{
-width:420px;background:white;padding:34px;border-radius:24px
+width:430px;
+background:white;
+padding:34px;
+border-radius:24px
 }
-.accText{
-text-align:center;font-size:22px;
-font-weight:900;margin-top:15px;color:#2563eb
+.donutTitle{
+font-size:16px;
+font-weight:800;
+margin-top:10px;
+color:#0f172a
+}
+.donutScore{
+font-size:28px;
+font-weight:900;
+color:#2563eb
 }
 </style>
 """
@@ -174,8 +244,8 @@ def register():
 <div class='auth'>
 <h2>Create Account</h2><br>
 <form method='POST'>
-<input name='username' required placeholder='Username'>
-<input type='password' name='password' required placeholder='Password'>
+<input name='username' placeholder='Username' required>
+<input type='password' name='password' placeholder='Password' required>
 <button>Create</button>
 </form><br>{msg}
 </div>
@@ -213,8 +283,8 @@ def login():
 <div class='auth'>
 <h2>Login</h2><br>
 <form method='POST'>
-<input name='username' required placeholder='Username'>
-<input type='password' name='password' required placeholder='Password'>
+<input name='username' placeholder='Username' required>
+<input type='password' name='password' placeholder='Password' required>
 <button>Login</button>
 </form><br>{msg}
 </div>
@@ -384,12 +454,11 @@ def dashboard():
                 "text": msg,
                 "platform": platform,
                 "account_age_days": 250,
-                "likes": 1200,
-                "followers": 8000
+                "likes": 1000,
+                "followers": 6000
             }])
 
             out = models[model].predict(sample)[0]
-
             pred = "🚨 Fake Giveaway" if out == 1 else "✅ Genuine Giveaway"
 
         except:
@@ -472,13 +541,12 @@ def dashboard():
 <h2>Quick Prediction</h2><br>
 
 <form method='POST'>
-
-<select name='model' id='modelSelect' onchange='updateChart()'>
+<select name='model'>
 {options}
 </select>
 
 <textarea rows='4' name='message'
-placeholder='Enter message'></textarea>
+placeholder='Enter suspicious message'></textarea>
 
 <select name='platform'>
 <option>Instagram</option>
@@ -487,8 +555,7 @@ placeholder='Enter message'></textarea>
 <option>YouTube</option>
 </select>
 
-<button name='predict'>Check</button>
-
+<button name='predict'>Check Message</button>
 </form>
 
 <div class='result'>{pred}</div>
@@ -496,23 +563,20 @@ placeholder='Enter message'></textarea>
 </div>
 
 <div class='card'>
-<h2>Selected Model Accuracy</h2><br>
-<div style="height:320px">
-<canvas id='donutChart'></canvas>
+<h2>🎯 All Models Accuracy</h2><br>
+
+<div class='grid'
+style='grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:25px;'
+id='donutWrap'>
 </div>
-<div class='accText' id='accText'></div>
+
 </div>
 
 <div class='card'>
-<h2 style="margin-bottom:18px;">📊 Model Comparison</h2>
-
-<div style="
-height:420px;
-padding:10px 5px 0 5px;
-">
+<h2>📊 Model Comparison</h2><br>
+<div style='height:420px'>
 <canvas id='barChart'></canvas>
 </div>
-
 </div>
 
 <div class='card'>
@@ -534,108 +598,124 @@ padding:10px 5px 0 5px;
 <script>
 
 let scores = {json.dumps(scores)};
-let donutChart;
 let barChart;
 
-function updateChart() {{
+function createAllDonuts(){{
 
-    let model = document.getElementById("modelSelect").value;
-    let acc = scores[model] || 0;
+let wrap = document.getElementById("donutWrap");
+wrap.innerHTML = "";
 
-    document.getElementById("accText").innerHTML =
-        model + "<br>" + acc + "% Accuracy";
+Object.keys(scores).forEach((model,index)=>{{
 
-    if(donutChart) donutChart.destroy();
+let acc = scores[model];
 
-    donutChart = new Chart(
-        document.getElementById("donutChart"),
-        {{
-            type:'doughnut',
-            data:{{
-                labels:['Accuracy','Remaining'],
-                datasets:[{{
-                    data:[acc,100-acc],
-                    backgroundColor:['#2563eb','#e5e7eb'],
-                    borderWidth:0
-                }}]
-            }},
-            options:{{
-                responsive:true,
-                maintainAspectRatio:false,
-                plugins:{{legend:{{display:false}}}},
-                cutout:'72%'
-            }}
-        }}
-    );
+let box = document.createElement("div");
+
+box.innerHTML = `
+<div style="
+background:#f8fafc;
+border-radius:22px;
+padding:18px;
+text-align:center;
+box-shadow:0 8px 18px rgba(0,0,0,.05);
+">
+<div style="height:220px">
+<canvas id="chart${{index}}"></canvas>
+</div>
+
+<div class="donutTitle">${{model}}</div>
+<div class="donutScore">${{acc}}%</div>
+</div>
+`;
+
+wrap.appendChild(box);
+
+new Chart(
+document.getElementById(`chart${{index}}`),
+{{
+type:'doughnut',
+data:{{
+datasets:[{{
+data:[acc,100-acc],
+backgroundColor:['#2563eb','#e5e7eb'],
+borderWidth:0
+}}]
+}},
+options:{{
+responsive:true,
+maintainAspectRatio:false,
+cutout:'72%',
+plugins:{{
+legend:{{display:false}},
+tooltip:{{enabled:false}}
+}}
+}}
+}}
+);
+
+}});
+
 }}
 
-function createBarChart() {{
+function createBarChart(){{
 
-    let labels = Object.keys(scores);
-    let values = Object.values(scores);
+let labels = Object.keys(scores);
+let values = Object.values(scores);
 
-    if(barChart) barChart.destroy();
+if(barChart) barChart.destroy();
 
-    barChart = new Chart(
-        document.getElementById("barChart"),
-        {{
-            type:'bar',
-            data:{{
-                labels:labels,
-                datasets:[{{
-                    label:'Accuracy %',
-                    data:values,
-                    backgroundColor:[
-                        '#2563eb',
-                        '#16a34a',
-                        '#f59e0b',
-                        '#ef4444'
-                    ],
-                    borderRadius:12,
-                    barThickness:55
-                }}]
-            }},
-            options:{{
-                responsive:true,
-                maintainAspectRatio:false,
+barChart = new Chart(
+document.getElementById("barChart"),
+{{
+type:'bar',
+data:{{
+labels:labels,
+datasets:[{{
+data:values,
+backgroundColor:[
+'#2563eb',
+'#16a34a',
+'#f59e0b',
+'#ef4444'
+],
+borderRadius:12,
+barThickness:55
+}}]
+}},
+options:{{
+responsive:true,
+maintainAspectRatio:false,
+plugins:{{
+legend:{{display:false}}
+}},
+scales:{{
+x:{{
+grid:{{display:false}},
+ticks:{{
+font:{{
+size:13,
+weight:'bold'
+}}
+}}
+}},
+y:{{
+beginAtZero:true,
+max:100,
+ticks:{{
+stepSize:10
+}},
+grid:{{
+color:'#e5e7eb'
+}}
+}}
+}}
+}}
+}}
+);
 
-                plugins:{{
-                    legend:{{display:false}},
-                    tooltip:{{
-                        backgroundColor:'#111827',
-                        padding:12
-                    }}
-                }},
-
-                scales:{{
-                    x:{{
-                        ticks:{{
-                            font:{{
-                                size:13,
-                                weight:'bold'
-                            }}
-                        }},
-                        grid:{{display:false}}
-                    }},
-
-                    y:{{
-                        beginAtZero:true,
-                        max:100,
-                        ticks:{{
-                            stepSize:10,
-                            font:{{size:12}}
-                        }},
-                        grid:{{
-                            color:'#e5e7eb'
-                        }}
-                    }}
-                }}
-            }}
-        }}
-    );
 }}
 
-updateChart();
+createAllDonuts();
 createBarChart();
 
 </script>
